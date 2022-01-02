@@ -1,0 +1,31 @@
+import sodium from "libsodium-wrappers";
+import { RemoveMemberTransaction, DefaultTrustChainEvent } from "./types";
+import { hashTransaction } from "./utils";
+
+export const removeMember = (
+  prevHash: string,
+  authorKeyPair: sodium.KeyPair,
+  memberPublicKey: string
+): DefaultTrustChainEvent => {
+  const transaction: RemoveMemberTransaction = {
+    type: "remove-member",
+    memberPublicKey,
+  };
+
+  const hash = hashTransaction(transaction);
+  return {
+    transaction,
+    authors: [
+      {
+        publicKey: sodium.to_base64(authorKeyPair.publicKey),
+        signature: sodium.to_base64(
+          sodium.crypto_sign_detached(
+            `${prevHash}${hash}`,
+            authorKeyPair.privateKey
+          )
+        ),
+      },
+    ],
+    prevHash,
+  };
+};
