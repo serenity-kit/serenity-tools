@@ -36,16 +36,25 @@ test("should be able to add a member as member with the permission canAddMember"
   expect(state.members).toMatchInlineSnapshot(`
     Object {
       "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM": Object {
+        "addedBy": Array [
+          "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
+        ],
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
       },
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
+        "addedBy": Array [
+          "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
+        ],
         "canAddMembers": true,
         "canRemoveMembers": false,
         "isAdmin": false,
       },
       "ZKcwjAMAaSiq7k3MQVQUZ6aa7kBreK__5hkGI4SCltk": Object {
+        "addedBy": Array [
+          "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY",
+        ],
         "canAddMembers": false,
         "canRemoveMembers": false,
         "isAdmin": false,
@@ -142,16 +151,26 @@ test("should be able to add an admin as admins", async () => {
   expect(state.members).toMatchInlineSnapshot(`
     Object {
       "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM": Object {
+        "addedBy": Array [
+          "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
+        ],
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
       },
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
+        "addedBy": Array [
+          "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
+        ],
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
       },
       "ZKcwjAMAaSiq7k3MQVQUZ6aa7kBreK__5hkGI4SCltk": Object {
+        "addedBy": Array [
+          "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY",
+          "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY",
+        ],
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,

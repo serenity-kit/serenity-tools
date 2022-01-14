@@ -4,6 +4,7 @@ import {
   MemberAuthorization,
   TrustChainState,
   DefaultTrustChainEvent,
+  MemberProperties,
 } from "./types";
 import {
   allAuthorsAreValidAdmins,
@@ -18,7 +19,7 @@ export const applyEvent = (
   state: TrustChainState,
   event: TrustChainEvent
 ): TrustChainState => {
-  let members: { [publicKey: string]: MemberAuthorization } = {
+  let members: { [publicKey: string]: MemberProperties } = {
     ...state.members,
   };
   const hash = hashTransaction(event.transaction);
@@ -50,8 +51,15 @@ export const applyEvent = (
         isAdmin: true,
         canAddMembers: true,
         canRemoveMembers: true,
+        addedBy: event.authors.map((author) => author.publicKey),
       };
     } else {
+      if (event.authors.length > 1) {
+        // TODO add test for this
+        throw new InvalidTrustChainError(
+          "Only one author allowed when adding a non-admin member."
+        );
+      }
       if (
         !areValidPermissions(
           state,
@@ -81,6 +89,7 @@ export const applyEvent = (
         isAdmin: false,
         canAddMembers: event.transaction.canAddMembers,
         canRemoveMembers: event.transaction.canRemoveMembers,
+        addedBy: [event.authors[0].publicKey],
       };
     }
   }
@@ -103,6 +112,7 @@ export const applyEvent = (
         isAdmin: false,
         canAddMembers: event.transaction.canAddMembers,
         canRemoveMembers: event.transaction.canRemoveMembers,
+        addedBy: members[event.transaction.memberPublicKey].addedBy,
       };
     } else if (
       !state.members[event.transaction.memberPublicKey].isAdmin &&
@@ -114,6 +124,7 @@ export const applyEvent = (
         isAdmin: true,
         canAddMembers: true,
         canRemoveMembers: true,
+        addedBy: members[event.transaction.memberPublicKey].addedBy,
       };
     } else if (
       !state.members[event.transaction.memberPublicKey].isAdmin &&
@@ -127,6 +138,7 @@ export const applyEvent = (
         isAdmin: false,
         canAddMembers: event.transaction.canAddMembers,
         canRemoveMembers: event.transaction.canRemoveMembers,
+        addedBy: members[event.transaction.memberPublicKey].addedBy,
       };
     } else {
       throw new InvalidTrustChainError("Not allowed member update.");
@@ -172,5 +184,6 @@ export const applyEvent = (
     members,
     lastEventHash: hash,
     trustChainStateVersion: 1,
+    encryptedStateClock: state.encryptedStateClock,
   };
 };

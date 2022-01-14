@@ -25,6 +25,9 @@ test("should resolve to one admin after creating a chain", async () => {
   expect(state.members).toMatchInlineSnapshot(`
     Object {
       "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM": Object {
+        "addedBy": Array [
+          "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
+        ],
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
@@ -43,11 +46,19 @@ test("should resolve to two admins after creating a chain with two authors", asy
   expect(state.members).toMatchInlineSnapshot(`
     Object {
       "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM": Object {
+        "addedBy": Array [
+          "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
+          "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY",
+        ],
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
       },
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
+        "addedBy": Array [
+          "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
+          "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY",
+        ],
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,

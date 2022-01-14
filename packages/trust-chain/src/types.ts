@@ -79,9 +79,58 @@ export type MemberAuthorization =
       canRemoveMembers: boolean;
     };
 
+export type MemberProperties =
+  | {
+      isAdmin: true;
+      canAddMembers: true;
+      canRemoveMembers: true;
+      addedBy: string[];
+      name?: string;
+      profileUpdatedBy?: string;
+    }
+  | {
+      isAdmin: false;
+      canAddMembers: boolean;
+      canRemoveMembers: boolean;
+      addedBy: string[];
+      name?: string;
+      profileUpdatedBy?: string;
+    };
+
 export type TrustChainState = {
   id: string;
-  members: { [publicKey: string]: MemberAuthorization };
+  // TODO split up into a better structure
+  members: { [publicKey: string]: MemberProperties };
   lastEventHash: string;
+  encryptedStateClock: number;
   trustChainStateVersion: number; // allows to know when to recompute the state after a bug fix
+};
+
+// encrypted state
+
+export type Key = {
+  keyId: string;
+  key: string;
+};
+
+export type EncryptedState = {
+  ciphertext: string;
+  nonce: string;
+  keyId: string;
+  publicData: { clock: number };
+  author: Author;
+};
+
+export type EncryptedMemberStateUpdate = {
+  name: string;
+};
+
+export type RawEncryptedStateUpdate = {
+  members: { [publicKey: string]: EncryptedMemberStateUpdate };
+};
+
+export type EncryptedStateUpdate = {
+  members: { [publicKey: string]: EncryptedMemberStateUpdate };
+  hash: string; // this hash ensures that all participants end up with the same state
+  // TODO add the chain hash as well to ensure integrity?
 };

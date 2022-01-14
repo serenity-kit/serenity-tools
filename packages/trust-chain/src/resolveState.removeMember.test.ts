@@ -46,11 +46,17 @@ test("should be able to remove a member as member with the permission canRemoveM
   expect(state.members).toMatchInlineSnapshot(`
     Object {
       "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM": Object {
+        "addedBy": Array [
+          "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
+        ],
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
       },
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
+        "addedBy": Array [
+          "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
+        ],
         "canAddMembers": false,
         "canRemoveMembers": true,
         "isAdmin": false,
@@ -129,6 +135,9 @@ test("should be able to remove a member as admin", async () => {
   expect(state.members).toMatchInlineSnapshot(`
     Object {
       "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM": Object {
+        "addedBy": Array [
+          "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
+        ],
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
@@ -198,6 +207,9 @@ test("should be able to remove an admin as admin", async () => {
   expect(state.members).toMatchInlineSnapshot(`
     Object {
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
+        "addedBy": Array [
+          "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
+        ],
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
