@@ -3,20 +3,22 @@ export type Permission = "canAddMembers" | "canRemoveMembers";
 export type CreateChainTransaction = {
   type: "create";
   id: string;
-  admins: string[];
+  lockboxPublicKeys: { [signingPublicKey: string]: string };
 };
 
 export type AddMemberTransaction =
   | {
       type: "add-member";
-      memberPublicKey: string;
+      memberSigningPublicKey: string;
+      memberLockboxPublicKey: string;
       isAdmin: true;
       canAddMembers: true;
       canRemoveMembers: true;
     }
   | {
       type: "add-member";
-      memberPublicKey: string;
+      memberSigningPublicKey: string;
+      memberLockboxPublicKey: string;
       isAdmin: false;
       canAddMembers: boolean;
       canRemoveMembers: boolean;
@@ -25,14 +27,14 @@ export type AddMemberTransaction =
 export type UpdateMemberTransaction =
   | {
       type: "update-member";
-      memberPublicKey: string;
+      memberSigningPublicKey: string;
       isAdmin: true;
       canAddMembers: true;
       canRemoveMembers: true;
     }
   | {
       type: "update-member";
-      memberPublicKey: string;
+      memberSigningPublicKey: string;
       isAdmin: false;
       canAddMembers: boolean;
       canRemoveMembers: boolean;
@@ -40,7 +42,7 @@ export type UpdateMemberTransaction =
 
 export type RemoveMemberTransaction = {
   type: "remove-member";
-  memberPublicKey: string;
+  memberSigningPublicKey: string;
 };
 
 export type Author = {
@@ -81,6 +83,7 @@ export type MemberAuthorization =
 
 export type MemberProperties =
   | {
+      lockboxPublicKey: string;
       isAdmin: true;
       canAddMembers: true;
       canRemoveMembers: true;
@@ -89,6 +92,7 @@ export type MemberProperties =
       profileUpdatedBy?: string;
     }
   | {
+      lockboxPublicKey: string;
       isAdmin: false;
       canAddMembers: boolean;
       canRemoveMembers: boolean;
@@ -104,6 +108,11 @@ export type TrustChainState = {
   lastEventHash: string;
   encryptedStateClock: number;
   trustChainStateVersion: number; // allows to know when to recompute the state after a bug fix
+};
+
+export type KeyPairBase64 = {
+  privateKey: string;
+  publicKey: string;
 };
 
 // encrypted state
@@ -133,4 +142,11 @@ export type EncryptedStateUpdate = {
   members: { [publicKey: string]: EncryptedMemberStateUpdate };
   hash: string; // this hash ensures that all participants end up with the same state
   // TODO add the chain hash as well to ensure integrity?
+};
+
+export type Lockbox = {
+  receiverSigningPublicKey: string;
+  senderLockboxPublicKey: string;
+  ciphertext: string;
+  nonce: string;
 };

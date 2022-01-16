@@ -16,15 +16,18 @@ export const isValidCreateChainEvent = (event: TrustChainEvent) => {
   if (event.transaction.type !== "create" || event.prevHash !== null) {
     return false;
   }
-  if (event.transaction.admins.length !== event.authors.length) {
+  if (
+    Object.keys(event.transaction.lockboxPublicKeys).length !==
+    event.authors.length
+  ) {
     return false;
   }
-  const admins = event.transaction.admins;
+  const lockboxPublicKeys = event.transaction.lockboxPublicKeys;
   const hash = sodium.to_base64(
     sodium.crypto_generichash(64, JSON.stringify(event.transaction))
   );
   return event.authors.every((author) => {
-    if (!admins.includes(author.publicKey)) {
+    if (!lockboxPublicKeys.hasOwnProperty(author.publicKey)) {
       return false;
     }
     return sodium.crypto_sign_verify_detached(

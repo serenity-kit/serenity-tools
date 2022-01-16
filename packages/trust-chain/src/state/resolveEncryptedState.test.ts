@@ -1,22 +1,26 @@
 import sodium from "libsodium-wrappers";
 import { createChain, InvalidEncryptedStateError, resolveState } from "..";
-import { getKeyPairA } from "../testUtils";
+import { getKeyPairA, getKeyPairsA, KeyPairs } from "../testUtils";
 import { createKey } from "./createKey";
 import { encryptState } from "./encryptState";
 import { resolveEncryptedState } from "./resolveEncryptedState";
 
 let keyPairA: sodium.KeyPair = null;
+let keyPairsA: KeyPairs = null;
 let keyPairAPublicKey: string = null;
 
 beforeAll(async () => {
   await sodium.ready;
   keyPairA = getKeyPairA();
+  keyPairsA = getKeyPairsA();
   keyPairAPublicKey = sodium.to_base64(keyPairA.publicKey);
 });
 
 test("should add the name to the user", async () => {
   const key = createKey();
-  const event = createChain(keyPairA, [sodium.to_base64(keyPairA.publicKey)]);
+  const event = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const state = resolveState([event]);
   const encryptedState = encryptState(
     state,
@@ -37,6 +41,7 @@ test("should add the name to the user", async () => {
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "wevxDsZ-L7wpy3ePZcQNfG8WDh0wB0d27phr5OMdLwI",
         "name": "Jane Doe",
         "profileUpdatedBy": "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
       },
@@ -47,7 +52,9 @@ test("should add the name to the user", async () => {
 test("should overwrite the name", async () => {
   const key = createKey();
   const keys = { [key.keyId]: key.key };
-  const event = createChain(keyPairA, [sodium.to_base64(keyPairA.publicKey)]);
+  const event = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const state = resolveState([event]);
   const encryptedState = encryptState(
     state,
@@ -77,6 +84,7 @@ test("should overwrite the name", async () => {
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "wevxDsZ-L7wpy3ePZcQNfG8WDh0wB0d27phr5OMdLwI",
         "name": "John Doe",
         "profileUpdatedBy": "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
       },
@@ -86,7 +94,9 @@ test("should overwrite the name", async () => {
 
 test("should fail in case of two encryptedState clocks are identical", async () => {
   const key = createKey();
-  const event = createChain(keyPairA, [sodium.to_base64(keyPairA.publicKey)]);
+  const event = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const state = resolveState([event]);
   const encryptedState = encryptState(
     state,
@@ -114,7 +124,9 @@ test("should fail in case of two encryptedState clocks are identical", async () 
 test("should order events by encryptedStateClock", async () => {
   const key = createKey();
   const keys = { [key.keyId]: key.key };
-  const event = createChain(keyPairA, [sodium.to_base64(keyPairA.publicKey)]);
+  const event = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const state = resolveState([event]);
   const encryptedState = encryptState(
     state,
@@ -144,6 +156,7 @@ test("should order events by encryptedStateClock", async () => {
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "wevxDsZ-L7wpy3ePZcQNfG8WDh0wB0d27phr5OMdLwI",
         "name": "John Doe",
         "profileUpdatedBy": "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
       },

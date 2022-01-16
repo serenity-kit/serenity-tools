@@ -1,7 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
 import sodium from "libsodium-wrappers";
+import { Key } from "../types";
 
-export const createKey = (): { keyId: string; key: string } => {
+export const createKey = (): Key => {
   const key = sodium.crypto_secretbox_keygen();
 
   return {

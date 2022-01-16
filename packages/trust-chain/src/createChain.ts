@@ -1,25 +1,32 @@
 import { v4 as uuidv4 } from "uuid";
 import sodium from "libsodium-wrappers";
-import { CreateChainTransaction, CreateChainTrustChainEvent } from "./types";
+import {
+  CreateChainTransaction,
+  CreateChainTrustChainEvent,
+  KeyPairBase64,
+} from "./types";
 import { hashTransaction } from "./utils";
 
 export const createChain = (
-  authorKeyPair: sodium.KeyPair,
-  admins: string[]
+  authorKeyPair: KeyPairBase64,
+  lockboxPublicKeys: { [signingPublicKey: string]: string }
 ): CreateChainTrustChainEvent => {
   const transaction: CreateChainTransaction = {
     type: "create",
     id: uuidv4(),
-    admins,
+    lockboxPublicKeys,
   };
   const hash = hashTransaction(transaction);
   return {
     transaction,
     authors: [
       {
-        publicKey: sodium.to_base64(authorKeyPair.publicKey),
+        publicKey: authorKeyPair.publicKey,
         signature: sodium.to_base64(
-          sodium.crypto_sign_detached(hash, authorKeyPair.privateKey)
+          sodium.crypto_sign_detached(
+            hash,
+            sodium.from_base64(authorKeyPair.privateKey)
+          )
         ),
       },
     ],

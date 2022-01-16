@@ -1,17 +1,19 @@
 import sodium from "libsodium-wrappers";
 import { createChain } from "./index";
-import { getKeyPairA } from "./testUtils";
+import { getKeyPairsA, KeyPairs } from "./testUtils";
 import { isValidCreateChainEvent } from "./utils";
 
-let keyPairA: sodium.KeyPair = null;
+let keyPairsA: KeyPairs = null;
 
 beforeAll(async () => {
   await sodium.ready;
-  keyPairA = getKeyPairA();
+  keyPairsA = getKeyPairsA();
 });
 
 test("should create a new chain event", async () => {
-  const event = createChain(keyPairA, [sodium.to_base64(keyPairA.publicKey)]);
+  const event = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   expect(event.prevHash).toBeNull();
   expect(isValidCreateChainEvent(event)).toBe(true);
 });

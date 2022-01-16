@@ -2,17 +2,25 @@ import sodium from "libsodium-wrappers";
 import { addAuthorToEvent } from "./addAuthorToEvent";
 import { InvalidTrustChainError } from "./errors";
 import { createChain, resolveState } from "./index";
-import { getKeyPairA, getKeyPairB, getKeyPairC } from "./testUtils";
+import {
+  getKeyPairB,
+  getKeyPairsA,
+  getKeyPairsB,
+  getKeyPairsC,
+  KeyPairs,
+} from "./testUtils";
 
-let keyPairA: sodium.KeyPair = null;
+let keyPairsA: KeyPairs = null;
 let keyPairB: sodium.KeyPair = null;
-let keyPairC: sodium.KeyPair = null;
+let keyPairsB: KeyPairs = null;
+let keyPairsC: KeyPairs = null;
 
 beforeAll(async () => {
   await sodium.ready;
-  keyPairA = getKeyPairA();
+  keyPairsA = getKeyPairsA();
   keyPairB = getKeyPairB();
-  keyPairC = getKeyPairC();
+  keyPairsB = getKeyPairsB();
+  keyPairsC = getKeyPairsC();
 
   // const newKeyPair = sodium.crypto_sign_keypair();
   // console.log("privateKey: ", sodium.to_base64(newKeyPair.privateKey));
@@ -20,7 +28,9 @@ beforeAll(async () => {
 });
 
 test("should resolve to one admin after creating a chain", async () => {
-  const event = createChain(keyPairA, [sodium.to_base64(keyPairA.publicKey)]);
+  const event = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const state = resolveState([event]);
   expect(state.members).toMatchInlineSnapshot(`
     Object {
@@ -31,16 +41,17 @@ test("should resolve to one admin after creating a chain", async () => {
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "wevxDsZ-L7wpy3ePZcQNfG8WDh0wB0d27phr5OMdLwI",
       },
     }
   `);
 });
 
 test("should resolve to two admins after creating a chain with two authors", async () => {
-  const event = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-    sodium.to_base64(keyPairB.publicKey),
-  ]);
+  const event = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+    [keyPairsB.sign.publicKey]: keyPairsB.box.publicKey,
+  });
   const event2 = addAuthorToEvent(event, keyPairB);
   const state = resolveState([event2]);
   expect(state.members).toMatchInlineSnapshot(`
@@ -53,6 +64,7 @@ test("should resolve to two admins after creating a chain with two authors", asy
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "wevxDsZ-L7wpy3ePZcQNfG8WDh0wB0d27phr5OMdLwI",
       },
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
         "addedBy": Array [
@@ -62,13 +74,16 @@ test("should resolve to two admins after creating a chain with two authors", asy
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "b_skeL8qudNQji-HuOldPNFDzYSBENNqmFMlawhtrHg",
       },
     }
   `);
 });
 
 test("should fail in case there are more authors than declared admins", async () => {
-  const event = createChain(keyPairA, [sodium.to_base64(keyPairA.publicKey)]);
+  const event = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const event2 = addAuthorToEvent(event, keyPairB);
   const chain = [event2];
   expect(() => resolveState(chain)).toThrow(InvalidTrustChainError);
@@ -76,10 +91,10 @@ test("should fail in case there are more authors than declared admins", async ()
 });
 
 test("should fail in case the authors and declared admins don't match up", async () => {
-  const event = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-    sodium.to_base64(keyPairC.publicKey),
-  ]);
+  const event = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+    [keyPairsC.sign.publicKey]: keyPairsC.box.publicKey,
+  });
   const event2 = addAuthorToEvent(event, keyPairB);
   const chain = [event2];
   expect(() => resolveState(chain)).toThrow(InvalidTrustChainError);

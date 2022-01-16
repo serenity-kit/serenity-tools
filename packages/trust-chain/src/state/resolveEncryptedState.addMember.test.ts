@@ -1,22 +1,36 @@
 import sodium from "libsodium-wrappers";
 import { addMember, createChain, resolveState, updateMember } from "..";
-import { getKeyPairA, getKeyPairB, getKeyPairC } from "../testUtils";
+import {
+  getKeyPairA,
+  getKeyPairB,
+  getKeyPairC,
+  getKeyPairsA,
+  getKeyPairsB,
+  getKeyPairsC,
+  KeyPairs,
+} from "../testUtils";
 import { hashTransaction } from "../utils";
 import { createKey } from "./createKey";
 import { encryptState } from "./encryptState";
 import { resolveEncryptedState } from "./resolveEncryptedState";
 
 let keyPairA: sodium.KeyPair = null;
+let keyPairsA: KeyPairs = null;
 let keyPairB: sodium.KeyPair = null;
+let keyPairsB: KeyPairs = null;
 let keyPairC: sodium.KeyPair = null;
+let keyPairsC: KeyPairs = null;
 let keyPairAPublicKey: string = null;
 let keyPairCPublicKey: string = null;
 
 beforeAll(async () => {
   await sodium.ready;
   keyPairA = getKeyPairA();
+  keyPairsA = getKeyPairsA();
   keyPairB = getKeyPairB();
+  keyPairsB = getKeyPairsB();
   keyPairC = getKeyPairC();
+  keyPairsC = getKeyPairsC();
   keyPairAPublicKey = sodium.to_base64(keyPairA.publicKey);
   keyPairCPublicKey = sodium.to_base64(keyPairC.publicKey);
 });
@@ -25,19 +39,21 @@ test("should allow the client to add a member to set the name", async () => {
   const key = createKey();
   const keys = { [key.keyId]: key.key };
 
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addMemberEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: false, canAddMembers: true, canRemoveMembers: false }
   );
   const addMemberEvent2 = addMember(
     hashTransaction(addMemberEvent.transaction),
     keyPairB,
-    sodium.to_base64(keyPairC.publicKey),
+    keyPairsC.sign.publicKey,
+    keyPairsC.box.publicKey,
     { isAdmin: false, canAddMembers: false, canRemoveMembers: false }
   );
   const chain = [createEvent, addMemberEvent, addMemberEvent2];
@@ -60,6 +76,7 @@ test("should allow the client to add a member to set the name", async () => {
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "wevxDsZ-L7wpy3ePZcQNfG8WDh0wB0d27phr5OMdLwI",
       },
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
         "addedBy": Array [
@@ -68,6 +85,7 @@ test("should allow the client to add a member to set the name", async () => {
         "canAddMembers": true,
         "canRemoveMembers": false,
         "isAdmin": false,
+        "lockboxPublicKey": "b_skeL8qudNQji-HuOldPNFDzYSBENNqmFMlawhtrHg",
       },
       "ZKcwjAMAaSiq7k3MQVQUZ6aa7kBreK__5hkGI4SCltk": Object {
         "addedBy": Array [
@@ -76,6 +94,7 @@ test("should allow the client to add a member to set the name", async () => {
         "canAddMembers": false,
         "canRemoveMembers": false,
         "isAdmin": false,
+        "lockboxPublicKey": "0hUuO22MoTa8X65ZvpR9KcfUwF_B2aIvLORPjuaofBg",
         "name": "Anna",
         "profileUpdatedBy": "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY",
       },
@@ -87,19 +106,21 @@ test("should allow an admin to update the name of a member added by someone else
   const key = createKey();
   const keys = { [key.keyId]: key.key };
 
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addMemberEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: false, canAddMembers: true, canRemoveMembers: false }
   );
   const addMemberEvent2 = addMember(
     hashTransaction(addMemberEvent.transaction),
     keyPairB,
-    sodium.to_base64(keyPairC.publicKey),
+    keyPairsC.sign.publicKey,
+    keyPairsC.box.publicKey,
     { isAdmin: false, canAddMembers: false, canRemoveMembers: false }
   );
   const chain = [createEvent, addMemberEvent, addMemberEvent2];
@@ -122,6 +143,7 @@ test("should allow an admin to update the name of a member added by someone else
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "wevxDsZ-L7wpy3ePZcQNfG8WDh0wB0d27phr5OMdLwI",
       },
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
         "addedBy": Array [
@@ -130,6 +152,7 @@ test("should allow an admin to update the name of a member added by someone else
         "canAddMembers": true,
         "canRemoveMembers": false,
         "isAdmin": false,
+        "lockboxPublicKey": "b_skeL8qudNQji-HuOldPNFDzYSBENNqmFMlawhtrHg",
       },
       "ZKcwjAMAaSiq7k3MQVQUZ6aa7kBreK__5hkGI4SCltk": Object {
         "addedBy": Array [
@@ -138,6 +161,7 @@ test("should allow an admin to update the name of a member added by someone else
         "canAddMembers": false,
         "canRemoveMembers": false,
         "isAdmin": false,
+        "lockboxPublicKey": "0hUuO22MoTa8X65ZvpR9KcfUwF_B2aIvLORPjuaofBg",
         "name": "Anna",
         "profileUpdatedBy": "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
       },
@@ -149,19 +173,21 @@ test("should allow an admin to overwrite the name of a member", async () => {
   const key = createKey();
   const keys = { [key.keyId]: key.key };
 
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addMemberEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: false, canAddMembers: true, canRemoveMembers: false }
   );
   const addMemberEvent2 = addMember(
     hashTransaction(addMemberEvent.transaction),
     keyPairB,
-    sodium.to_base64(keyPairC.publicKey),
+    keyPairsC.sign.publicKey,
+    keyPairsC.box.publicKey,
     { isAdmin: false, canAddMembers: false, canRemoveMembers: false }
   );
   const chain = [createEvent, addMemberEvent, addMemberEvent2];
@@ -195,6 +221,7 @@ test("should allow an admin to overwrite the name of a member", async () => {
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "wevxDsZ-L7wpy3ePZcQNfG8WDh0wB0d27phr5OMdLwI",
       },
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
         "addedBy": Array [
@@ -203,6 +230,7 @@ test("should allow an admin to overwrite the name of a member", async () => {
         "canAddMembers": true,
         "canRemoveMembers": false,
         "isAdmin": false,
+        "lockboxPublicKey": "b_skeL8qudNQji-HuOldPNFDzYSBENNqmFMlawhtrHg",
       },
       "ZKcwjAMAaSiq7k3MQVQUZ6aa7kBreK__5hkGI4SCltk": Object {
         "addedBy": Array [
@@ -211,6 +239,7 @@ test("should allow an admin to overwrite the name of a member", async () => {
         "canAddMembers": false,
         "canRemoveMembers": false,
         "isAdmin": false,
+        "lockboxPublicKey": "0hUuO22MoTa8X65ZvpR9KcfUwF_B2aIvLORPjuaofBg",
         "name": "Niko",
         "profileUpdatedBy": "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
       },
@@ -222,19 +251,21 @@ test("should not allow for a member to overwrite the name set by an admin", asyn
   const key = createKey();
   const keys = { [key.keyId]: key.key };
 
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addMemberEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: false, canAddMembers: true, canRemoveMembers: false }
   );
   const addMemberEvent2 = addMember(
     hashTransaction(addMemberEvent.transaction),
     keyPairB,
-    sodium.to_base64(keyPairC.publicKey),
+    keyPairsC.sign.publicKey,
+    keyPairsC.box.publicKey,
     { isAdmin: false, canAddMembers: false, canRemoveMembers: false }
   );
   const chain = [createEvent, addMemberEvent, addMemberEvent2];
@@ -268,6 +299,7 @@ test("should not allow for a member to overwrite the name set by an admin", asyn
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "wevxDsZ-L7wpy3ePZcQNfG8WDh0wB0d27phr5OMdLwI",
       },
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
         "addedBy": Array [
@@ -276,6 +308,7 @@ test("should not allow for a member to overwrite the name set by an admin", asyn
         "canAddMembers": true,
         "canRemoveMembers": false,
         "isAdmin": false,
+        "lockboxPublicKey": "b_skeL8qudNQji-HuOldPNFDzYSBENNqmFMlawhtrHg",
       },
       "ZKcwjAMAaSiq7k3MQVQUZ6aa7kBreK__5hkGI4SCltk": Object {
         "addedBy": Array [
@@ -284,6 +317,7 @@ test("should not allow for a member to overwrite the name set by an admin", asyn
         "canAddMembers": false,
         "canRemoveMembers": false,
         "isAdmin": false,
+        "lockboxPublicKey": "0hUuO22MoTa8X65ZvpR9KcfUwF_B2aIvLORPjuaofBg",
         "name": "Nik",
         "profileUpdatedBy": "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
       },
@@ -295,25 +329,27 @@ test("should not allow for a member to overwrite the name added by the member, b
   const key = createKey();
   const keys = { [key.keyId]: key.key };
 
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addMemberEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: false, canAddMembers: true, canRemoveMembers: false }
   );
   const addMemberEvent2 = addMember(
     hashTransaction(addMemberEvent.transaction),
     keyPairB,
-    sodium.to_base64(keyPairC.publicKey),
+    keyPairsC.sign.publicKey,
+    keyPairsC.box.publicKey,
     { isAdmin: false, canAddMembers: false, canRemoveMembers: false }
   );
   const updateMemberEvent = updateMember(
     hashTransaction(addMemberEvent2.transaction),
     keyPairA,
-    sodium.to_base64(keyPairC.publicKey),
+    keyPairsC.sign.publicKey,
     { isAdmin: true, canAddMembers: true, canRemoveMembers: true }
   );
   const chain = [
@@ -340,6 +376,7 @@ test("should not allow for a member to overwrite the name added by the member, b
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "wevxDsZ-L7wpy3ePZcQNfG8WDh0wB0d27phr5OMdLwI",
       },
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
         "addedBy": Array [
@@ -348,6 +385,7 @@ test("should not allow for a member to overwrite the name added by the member, b
         "canAddMembers": true,
         "canRemoveMembers": false,
         "isAdmin": false,
+        "lockboxPublicKey": "b_skeL8qudNQji-HuOldPNFDzYSBENNqmFMlawhtrHg",
       },
       "ZKcwjAMAaSiq7k3MQVQUZ6aa7kBreK__5hkGI4SCltk": Object {
         "addedBy": Array [
@@ -356,6 +394,7 @@ test("should not allow for a member to overwrite the name added by the member, b
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "0hUuO22MoTa8X65ZvpR9KcfUwF_B2aIvLORPjuaofBg",
       },
     }
   `);

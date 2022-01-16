@@ -2,32 +2,43 @@ import sodium from "libsodium-wrappers";
 import { addAuthorToEvent } from "./addAuthorToEvent";
 import { InvalidTrustChainError } from "./errors";
 import { createChain, resolveState, addMember, updateMember } from "./index";
-import { getKeyPairA, getKeyPairB } from "./testUtils";
+import {
+  getKeyPairA,
+  getKeyPairB,
+  getKeyPairsA,
+  getKeyPairsB,
+  KeyPairs,
+} from "./testUtils";
 import { hashTransaction } from "./utils";
 
 let keyPairA: sodium.KeyPair = null;
+let keyPairsA: KeyPairs = null;
 let keyPairB: sodium.KeyPair = null;
+let keyPairsB: KeyPairs = null;
 
 beforeAll(async () => {
   await sodium.ready;
   keyPairA = getKeyPairA();
+  keyPairsA = getKeyPairsA();
   keyPairB = getKeyPairB();
+  keyPairsB = getKeyPairsB();
 });
 
 test("should be able to promote a member to an admin", async () => {
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addMemberEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: false, canAddMembers: true, canRemoveMembers: false }
   );
   const updateMemberEvent = updateMember(
     hashTransaction(addMemberEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
     { isAdmin: true, canAddMembers: true, canRemoveMembers: true }
   );
   const state = resolveState([createEvent, addMemberEvent, updateMemberEvent]);
@@ -40,6 +51,7 @@ test("should be able to promote a member to an admin", async () => {
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "wevxDsZ-L7wpy3ePZcQNfG8WDh0wB0d27phr5OMdLwI",
       },
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
         "addedBy": Array [
@@ -48,25 +60,27 @@ test("should be able to promote a member to an admin", async () => {
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "b_skeL8qudNQji-HuOldPNFDzYSBENNqmFMlawhtrHg",
       },
     }
   `);
 });
 
 test("should be able to demote an admin to a member", async () => {
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addAdminEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: true, canAddMembers: true, canRemoveMembers: true }
   );
   const updateMemberEvent = updateMember(
     hashTransaction(addAdminEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
     { isAdmin: false, canAddMembers: false, canRemoveMembers: false }
   );
   const updateMemberEvent2 = addAuthorToEvent(updateMemberEvent, keyPairB);
@@ -80,6 +94,7 @@ test("should be able to demote an admin to a member", async () => {
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "wevxDsZ-L7wpy3ePZcQNfG8WDh0wB0d27phr5OMdLwI",
       },
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
         "addedBy": Array [
@@ -88,25 +103,27 @@ test("should be able to demote an admin to a member", async () => {
         "canAddMembers": false,
         "canRemoveMembers": false,
         "isAdmin": false,
+        "lockboxPublicKey": "b_skeL8qudNQji-HuOldPNFDzYSBENNqmFMlawhtrHg",
       },
     }
   `);
 });
 
 test("should be able to update a member's canAddMembers", async () => {
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addMemberEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: false, canAddMembers: false, canRemoveMembers: false }
   );
   const updateMemberEvent = updateMember(
     hashTransaction(addMemberEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
     { isAdmin: false, canAddMembers: true, canRemoveMembers: false }
   );
   const state = resolveState([createEvent, addMemberEvent, updateMemberEvent]);
@@ -119,6 +136,7 @@ test("should be able to update a member's canAddMembers", async () => {
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "wevxDsZ-L7wpy3ePZcQNfG8WDh0wB0d27phr5OMdLwI",
       },
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
         "addedBy": Array [
@@ -127,25 +145,27 @@ test("should be able to update a member's canAddMembers", async () => {
         "canAddMembers": true,
         "canRemoveMembers": false,
         "isAdmin": false,
+        "lockboxPublicKey": "b_skeL8qudNQji-HuOldPNFDzYSBENNqmFMlawhtrHg",
       },
     }
   `);
 });
 
 test("should be able to update a member's canRemoveMembers", async () => {
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addMemberEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: false, canAddMembers: false, canRemoveMembers: false }
   );
   const updateMemberEvent = updateMember(
     hashTransaction(addMemberEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
     { isAdmin: false, canAddMembers: false, canRemoveMembers: true }
   );
   const state = resolveState([createEvent, addMemberEvent, updateMemberEvent]);
@@ -158,6 +178,7 @@ test("should be able to update a member's canRemoveMembers", async () => {
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "wevxDsZ-L7wpy3ePZcQNfG8WDh0wB0d27phr5OMdLwI",
       },
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
         "addedBy": Array [
@@ -166,25 +187,27 @@ test("should be able to update a member's canRemoveMembers", async () => {
         "canAddMembers": false,
         "canRemoveMembers": true,
         "isAdmin": false,
+        "lockboxPublicKey": "b_skeL8qudNQji-HuOldPNFDzYSBENNqmFMlawhtrHg",
       },
     }
   `);
 });
 
 test("should be able to update a member's canAddMembers and canRemoveMembers", async () => {
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addMemberEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: false, canAddMembers: false, canRemoveMembers: false }
   );
   const updateMemberEvent = updateMember(
     hashTransaction(addMemberEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
     { isAdmin: false, canAddMembers: true, canRemoveMembers: true }
   );
   const state = resolveState([createEvent, addMemberEvent, updateMemberEvent]);
@@ -197,6 +220,7 @@ test("should be able to update a member's canAddMembers and canRemoveMembers", a
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": true,
+        "lockboxPublicKey": "wevxDsZ-L7wpy3ePZcQNfG8WDh0wB0d27phr5OMdLwI",
       },
       "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY": Object {
         "addedBy": Array [
@@ -205,25 +229,27 @@ test("should be able to update a member's canAddMembers and canRemoveMembers", a
         "canAddMembers": true,
         "canRemoveMembers": true,
         "isAdmin": false,
+        "lockboxPublicKey": "b_skeL8qudNQji-HuOldPNFDzYSBENNqmFMlawhtrHg",
       },
     }
   `);
 });
 
 test("should fail to demote an admin to a member if not more than 50% admins agree", async () => {
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addAdminEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: true, canAddMembers: true, canRemoveMembers: true }
   );
   const updateMemberEvent = updateMember(
     hashTransaction(addAdminEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
     { isAdmin: false, canAddMembers: false, canRemoveMembers: false }
   );
   const chain = [createEvent, addAdminEvent, updateMemberEvent];
@@ -232,19 +258,20 @@ test("should fail to demote an admin to a member if not more than 50% admins agr
 });
 
 test("should fail to promote an admin that is already an admin", async () => {
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addAdminEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: true, canAddMembers: true, canRemoveMembers: true }
   );
   const updateMemberEvent = updateMember(
     hashTransaction(addAdminEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
     { isAdmin: true, canAddMembers: true, canRemoveMembers: true }
   );
   const updateMemberEvent2 = addAuthorToEvent(updateMemberEvent, keyPairB);
@@ -254,19 +281,20 @@ test("should fail to promote an admin that is already an admin", async () => {
 });
 
 test("should fail to update a member if nothing changes and canAddMembers and canRemoveMembers are false", async () => {
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addMemberEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: false, canAddMembers: false, canRemoveMembers: false }
   );
   const updateMemberEvent = updateMember(
     hashTransaction(addMemberEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
     { isAdmin: false, canAddMembers: false, canRemoveMembers: false }
   );
   const chain = [createEvent, addMemberEvent, updateMemberEvent];
@@ -275,19 +303,20 @@ test("should fail to update a member if nothing changes and canAddMembers and ca
 });
 
 test("should fail to update a member if nothing changes and canAddMembers and canRemoveMembers are true", async () => {
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addMemberEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: false, canAddMembers: true, canRemoveMembers: true }
   );
   const updateMemberEvent = updateMember(
     hashTransaction(addMemberEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
     { isAdmin: false, canAddMembers: true, canRemoveMembers: true }
   );
   const chain = [createEvent, addMemberEvent, updateMemberEvent];
@@ -296,19 +325,20 @@ test("should fail to update a member if nothing changes and canAddMembers and ca
 });
 
 test("should fail to update a member if nothing changes and canAddMembers is true and canRemoveMembers is false", async () => {
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addMemberEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: false, canAddMembers: true, canRemoveMembers: false }
   );
   const updateMemberEvent = updateMember(
     hashTransaction(addMemberEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
     { isAdmin: false, canAddMembers: true, canRemoveMembers: false }
   );
   const chain = [createEvent, addMemberEvent, updateMemberEvent];
@@ -317,19 +347,20 @@ test("should fail to update a member if nothing changes and canAddMembers is tru
 });
 
 test("should fail to update a member if nothing changes and canAddMembers is false and canRemoveMembers is true", async () => {
-  const createEvent = createChain(keyPairA, [
-    sodium.to_base64(keyPairA.publicKey),
-  ]);
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
   const addMemberEvent = addMember(
     hashTransaction(createEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
     { isAdmin: false, canAddMembers: false, canRemoveMembers: true }
   );
   const updateMemberEvent = updateMember(
     hashTransaction(addMemberEvent.transaction),
     keyPairA,
-    sodium.to_base64(keyPairB.publicKey),
+    keyPairsB.sign.publicKey,
     { isAdmin: false, canAddMembers: false, canRemoveMembers: true }
   );
   const chain = [createEvent, addMemberEvent, updateMemberEvent];
