@@ -31,7 +31,12 @@ test("should add the name to the user", async () => {
 
   const keys = { [key.keyId]: key.key };
   // TODO order encyrpted states by the clock
-  const result = resolveEncryptedState(state, [encryptedState], keys);
+  const result = resolveEncryptedState(
+    state,
+    [encryptedState],
+    keys,
+    keyPairsA.sign.publicKey
+  );
   expect(result.state.members).toMatchInlineSnapshot(`
     Object {
       "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM": Object {
@@ -62,7 +67,12 @@ test("should overwrite the name", async () => {
     key,
     keyPairA
   );
-  const result2 = resolveEncryptedState(state, [encryptedState], keys);
+  const result2 = resolveEncryptedState(
+    state,
+    [encryptedState],
+    keys,
+    keyPairsA.sign.publicKey
+  );
   const encryptedState2 = encryptState(
     result2.state,
     { members: { [keyPairAPublicKey]: { name: "John Doe" } } },
@@ -73,7 +83,8 @@ test("should overwrite the name", async () => {
   const result3 = resolveEncryptedState(
     result2.state,
     [encryptedState, encryptedState2],
-    keys
+    keys,
+    keyPairsA.sign.publicKey
   );
   expect(result3.state.members).toMatchInlineSnapshot(`
     Object {
@@ -113,7 +124,12 @@ test("should fail in case of two encryptedState clocks are identical", async () 
 
   const keys = { [key.keyId]: key.key };
   const resolve = () =>
-    resolveEncryptedState(state, [encryptedState2, encryptedState], keys);
+    resolveEncryptedState(
+      state,
+      [encryptedState2, encryptedState],
+      keys,
+      keyPairsA.sign.publicKey
+    );
 
   expect(resolve).toThrow(InvalidEncryptedStateError);
   expect(resolve).toThrow(
@@ -134,7 +150,12 @@ test("should order events by encryptedStateClock", async () => {
     key,
     keyPairA
   );
-  const result2 = resolveEncryptedState(state, [encryptedState], keys);
+  const result2 = resolveEncryptedState(
+    state,
+    [encryptedState],
+    keys,
+    keyPairsA.sign.publicKey
+  );
   const encryptedState2 = encryptState(
     result2.state,
     { members: { [keyPairAPublicKey]: { name: "John Doe" } } },
@@ -145,7 +166,8 @@ test("should order events by encryptedStateClock", async () => {
   const result3 = resolveEncryptedState(
     result2.state,
     [encryptedState2, encryptedState],
-    keys
+    keys,
+    keyPairsA.sign.publicKey
   );
   expect(result3.state.members).toMatchInlineSnapshot(`
     Object {

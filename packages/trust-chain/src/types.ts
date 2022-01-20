@@ -107,7 +107,7 @@ export type TrustChainState = {
   members: { [publicKey: string]: MemberProperties };
   lastEventHash: string;
   encryptedStateClock: number;
-  trustChainStateVersion: number; // allows to know when to recompute the state after a bug fix
+  trustChainVersion: number; // allows to know when to recompute the state after a bug fix
 };
 
 export type KeyPairBase64 = {

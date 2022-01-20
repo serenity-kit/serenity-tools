@@ -235,6 +235,23 @@ test("should be able to update a member's canAddMembers and canRemoveMembers", a
   `);
 });
 
+test("should fail to demote the last admin to a member", async () => {
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
+  const updateMemberEvent = updateMember(
+    hashTransaction(createEvent.transaction),
+    keyPairA,
+    keyPairsA.sign.publicKey,
+    { isAdmin: false, canAddMembers: false, canRemoveMembers: false }
+  );
+  const chain = [createEvent, updateMemberEvent];
+  expect(() => resolveState(chain)).toThrow(InvalidTrustChainError);
+  expect(() => resolveState(chain)).toThrow(
+    "Not allowed to demote the last admin."
+  );
+});
+
 test("should fail to demote an admin to a member if not more than 50% admins agree", async () => {
   const createEvent = createChain(keyPairsA.sign, {
     [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,

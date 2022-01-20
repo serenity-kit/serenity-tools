@@ -1,6 +1,6 @@
 import sodium from "libsodium-wrappers";
 import { Key, RawEncryptedStateUpdate, TrustChainState } from "../types";
-import { hashTransaction } from "../utils";
+import { canonicalize, hashTransaction } from "../utils";
 import { applyStateUpdates } from "./applyStateUpdates";
 import { encryptAead, sign } from "./crypto";
 
@@ -21,7 +21,7 @@ export const encryptState = (
   const encryptedStateUpdateWithHash = { ...stateUpdates, hash };
 
   const publicData = { clock };
-  const publicDataAsBase64 = sodium.to_base64(JSON.stringify(publicData));
+  const publicDataAsBase64 = sodium.to_base64(canonicalize(publicData));
   const { ciphertext, publicNonce } = encryptAead(
     JSON.stringify(encryptedStateUpdateWithHash),
     publicDataAsBase64,

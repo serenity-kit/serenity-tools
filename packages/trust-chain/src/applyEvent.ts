@@ -110,6 +110,12 @@ export const applyEvent = (
       event.transaction.isAdmin === false &&
       isValidAdminDecision(state, event as DefaultTrustChainEvent)
     ) {
+      if (getAdminCount(state) <= 1) {
+        throw new InvalidTrustChainError(
+          "Not allowed to demote the last admin."
+        );
+      }
+
       // demote the admin to a member
       members[event.transaction.memberSigningPublicKey] = {
         lockboxPublicKey:
@@ -194,7 +200,7 @@ export const applyEvent = (
     id: state.id,
     members,
     lastEventHash: hash,
-    trustChainStateVersion: 1,
+    trustChainVersion: 1,
     encryptedStateClock: state.encryptedStateClock,
   };
 };

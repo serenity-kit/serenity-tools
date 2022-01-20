@@ -28,7 +28,7 @@ export const applyCreateChainEvent = (
     id: event.transaction.id,
     members,
     lastEventHash: hashTransaction(event.transaction),
-    trustChainStateVersion: 1,
     encryptedStateClock: 0,
+    trustChainVersion: 1,
   };
 };

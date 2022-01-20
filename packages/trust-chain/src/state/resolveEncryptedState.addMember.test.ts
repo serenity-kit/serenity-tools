@@ -65,7 +65,12 @@ test("should allow the client to add a member to set the name", async () => {
     keyPairB
   );
 
-  const result2 = resolveEncryptedState(state, [encryptedState], keys);
+  const result2 = resolveEncryptedState(
+    state,
+    [encryptedState],
+    keys,
+    keyPairsA.sign.publicKey
+  );
 
   expect(result2.state.members).toMatchInlineSnapshot(`
     Object {
@@ -132,7 +137,12 @@ test("should allow an admin to update the name of a member added by someone else
     keyPairA
   );
 
-  const result2 = resolveEncryptedState(state, [encryptedState], keys);
+  const result2 = resolveEncryptedState(
+    state,
+    [encryptedState],
+    keys,
+    keyPairsA.sign.publicKey
+  );
 
   expect(result2.state.members).toMatchInlineSnapshot(`
     Object {
@@ -198,7 +208,12 @@ test("should allow an admin to overwrite the name of a member", async () => {
     key,
     keyPairB
   );
-  const result2 = resolveEncryptedState(state, [encryptedState], keys);
+  const result2 = resolveEncryptedState(
+    state,
+    [encryptedState],
+    keys,
+    keyPairsA.sign.publicKey
+  );
 
   const encryptedState2 = encryptState(
     result2.state,
@@ -209,7 +224,8 @@ test("should allow an admin to overwrite the name of a member", async () => {
   const result3 = resolveEncryptedState(
     state,
     [encryptedState, encryptedState2],
-    keys
+    keys,
+    keyPairsA.sign.publicKey
   );
 
   expect(result3.state.members).toMatchInlineSnapshot(`
@@ -276,7 +292,12 @@ test("should not allow for a member to overwrite the name set by an admin", asyn
     key,
     keyPairA
   );
-  const result2 = resolveEncryptedState(state, [encryptedState], keys);
+  const result2 = resolveEncryptedState(
+    state,
+    [encryptedState],
+    keys,
+    keyPairsA.sign.publicKey
+  );
 
   const encryptedState2 = encryptState(
     result2.state,
@@ -287,7 +308,8 @@ test("should not allow for a member to overwrite the name set by an admin", asyn
   const result3 = resolveEncryptedState(
     result2.state,
     [encryptedState, encryptedState2],
-    keys
+    keys,
+    keyPairsA.sign.publicKey
   );
 
   expect(result3.state.members).toMatchInlineSnapshot(`
@@ -365,7 +387,12 @@ test("should not allow for a member to overwrite the name added by the member, b
     key,
     keyPairB
   );
-  const result2 = resolveEncryptedState(state, [encryptedState], keys);
+  const result2 = resolveEncryptedState(
+    state,
+    [encryptedState],
+    keys,
+    keyPairsA.sign.publicKey
+  );
 
   expect(result2.state.members).toMatchInlineSnapshot(`
     Object {

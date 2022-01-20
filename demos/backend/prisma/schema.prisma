@@ -1,0 +1,80 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["interactiveTransactions"]
+  binaryTargets   = ["native", "debian-openssl-1.1.x"]
+  output          = "./generated/output"
+}
+
+model EncryptedState {
+  id                     String       @id @default(uuid())
+  ciphertext             String
+  nonce                  String
+  publicData             Json
+  organization           Organization @relation(fields: [organizationId], references: [id])
+  organizationId         String
+  author                 User         @relation(fields: [authorPublicSigningKey], references: [publicSigningKey])
+  authorPublicSigningKey String
+  authorSignature        String
+  key                    Key          @relation(fields: [keyId], references: [id])
+  keyId                  String
+  lockboxes              Lockbox[]
+
+  // there is only one EncryptedState per user per organization allowed
+  @@unique([organizationId, authorPublicSigningKey])
+}
+
+model Key {
+  id              String           @id
+  encryptedStates EncryptedState[]
+  lockbox         Lockbox[]
+}
+
+model Lockbox {
+  id                       String           @id @default(uuid())
+  receiver                 User             @relation(fields: [receiverSigningPublicKey], references: [publicSigningKey])
+  receiverSigningPublicKey String
+  senderLockboxPublicKey   String
+  ciphertext               String
+  nonce                    String
+  key                      Key              @relation(fields: [keyId], references: [id])
+  keyId                    String
+  encryptedStates          EncryptedState[]
+
+  @@unique([keyId, receiverSigningPublicKey])
+}
+
+model Organization {
+  id              String           @id
+  members         User[]
+  events          Event[]
+  eventProposal   EventProposal[]
+  lastEventHash   String
+  serializedState Json
+  encryptedStates EncryptedState[] // the current encrypted states
+}
+
+model User {
+  publicSigningKey String           @id
+  organizations    Organization[]
+  encryptedStates  EncryptedState[]
+  lockboxes        Lockbox[]
+}
+
+model Event {
+  id             Int          @id @default(autoincrement())
+  content        Json
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+}
+
+model EventProposal {
+  id             String       @id @default(uuid())
+  content        Json
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+}

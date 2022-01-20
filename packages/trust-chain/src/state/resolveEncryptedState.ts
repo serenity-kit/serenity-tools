@@ -1,7 +1,6 @@
-import { InvalidEncryptedStateError } from "..";
+import { InvalidEncryptedStateError, Key, RawEncryptedStateUpdate } from "..";
 import { EncryptedState, TrustChainState } from "../types";
 import { hashTransaction } from "../utils";
-import { encryptState } from "./encryptState";
 import { verifyAndApplyEncryptedState } from "./verifyAndApplyEncryptedState";
 
 function compareByClock(a: EncryptedState, b: EncryptedState) {
@@ -28,7 +27,8 @@ function verifyClockInSortedArray(sortedEncryptedState: EncryptedState[]) {
 export const resolveEncryptedState = (
   currentState: TrustChainState,
   encryptedState: EncryptedState[],
-  keys: { [publicKey: string]: string } // TODO make sure they are signed
+  keys: { [keyId: string]: string }, // TODO make sure they are signed,
+  currentUserSigningPublicKey: string
 ) => {
   let failedToApplyAllUpdates = false;
   const sortedEncryptedState = encryptedState.sort(compareByClock);
@@ -36,14 +36,23 @@ export const resolveEncryptedState = (
 
   let state: TrustChainState = { ...currentState };
   let lastHash = null;
+  let lastKey: Key = null;
+  let currentUserEncryptedState: RawEncryptedStateUpdate = null;
   sortedEncryptedState.forEach((encryptedStateUpdate) => {
     const result = verifyAndApplyEncryptedState(
       state,
       encryptedStateUpdate,
       keys[encryptedStateUpdate.keyId]
     );
+    if (encryptedStateUpdate.author.publicKey === currentUserSigningPublicKey) {
+      currentUserEncryptedState = result.stateUpdates;
+    }
     lastHash = result.hash;
     state = result.state;
+    lastKey = {
+      keyId: encryptedStateUpdate.keyId,
+      key: keys[encryptedStateUpdate.keyId],
+    };
     if (result.failed) {
       failedToApplyAllUpdates = true;
     }
@@ -54,5 +63,7 @@ export const resolveEncryptedState = (
     state,
     failedToApplyAllUpdates,
     isIdenticalContent: hash === lastHash,
+    lastKey,
+    currentUserEncryptedState,
   };
 };

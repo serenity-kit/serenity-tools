@@ -6,9 +6,40 @@ import {
   TrustChainState,
 } from "./types";
 
+// vendored from https://github.com/erdtman/canonicalize
+export const canonicalize = (object: any) => {
+  if (object === null || typeof object !== "object") {
+    return JSON.stringify(object);
+  }
+
+  if (object.toJSON instanceof Function) {
+    return canonicalize(object.toJSON());
+  }
+
+  if (Array.isArray(object)) {
+    const values = object.reduce((t, cv, ci) => {
+      const comma = ci === 0 ? "" : ",";
+      const value = cv === undefined || typeof cv === "symbol" ? null : cv;
+      return `${t}${comma}${canonicalize(value)}`;
+    }, "");
+    return `[${values}]`;
+  }
+
+  const values = Object.keys(object)
+    .sort()
+    .reduce((t, cv) => {
+      if (object[cv] === undefined || typeof object[cv] === "symbol") {
+        return t;
+      }
+      const comma = t.length === 0 ? "" : ",";
+      return `${t}${comma}${canonicalize(cv)}:${canonicalize(object[cv])}`;
+    }, "");
+  return `{${values}}`;
+};
+
 export const hashTransaction = (transaction) => {
   return sodium.to_base64(
-    sodium.crypto_generichash(64, JSON.stringify(transaction))
+    sodium.crypto_generichash(64, canonicalize(transaction))
   );
 };
 
@@ -23,9 +54,7 @@ export const isValidCreateChainEvent = (event: TrustChainEvent) => {
     return false;
   }
   const lockboxPublicKeys = event.transaction.lockboxPublicKeys;
-  const hash = sodium.to_base64(
-    sodium.crypto_generichash(64, JSON.stringify(event.transaction))
-  );
+  const hash = hashTransaction(event.transaction);
   return event.authors.every((author) => {
     if (!lockboxPublicKeys.hasOwnProperty(author.publicKey)) {
       return false;
