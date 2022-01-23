@@ -11,26 +11,26 @@ import { createServer } from "http";
 import { schema } from "./schema";
 
 async function main() {
+  const allowedOrigin =
+    process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test"
+      ? "http://localhost:3000"
+      : "https://www.serenity.li";
+  const corsOptions = { credentials: true, origin: allowedOrigin };
+  console.log(allowedOrigin, process.env.NODE_ENV);
+
   const apolloServer = new ApolloServer({
     schema,
     plugins: [
-      process.env.NODE_ENV === "production"
-        ? ApolloServerPluginLandingPageDisabled()
-        : ApolloServerPluginLandingPageGraphQLPlayground(),
+      process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test"
+        ? ApolloServerPluginLandingPageGraphQLPlayground()
+        : ApolloServerPluginLandingPageDisabled(),
     ],
   });
   await apolloServer.start();
 
-  // const allowedOrigin =
-  //   process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test"
-  //     ? "http://localhost:3000"
-  //     : "https://www.serenity.li";
-  // const corsOptions = { credentials: true, origin: allowedOrigin };
-
   const app = express();
-  // app.use(cors(corsOptions));
-  // apolloServer.applyMiddleware({ app, cors: corsOptions });
-  apolloServer.applyMiddleware({ app });
+  app.use(cors(corsOptions));
+  apolloServer.applyMiddleware({ app, cors: corsOptions });
 
   const server = createServer(app);
 
@@ -64,7 +64,7 @@ async function main() {
   server.listen(port, () => {
     console.log(`🚀 App ready at http://localhost:${port}/`);
     console.log(`🚀 GraphQL service ready at http://localhost:${port}/graphql`);
-    console.log(`🚀 Websocket service ready at ws://localhost:${port}`);
+    // console.log(`🚀 Websocket service ready at ws://localhost:${port}`);
   });
 }
 
