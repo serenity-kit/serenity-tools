@@ -12,7 +12,6 @@ import { schema } from "./schema";
 
 async function main() {
   const apolloServer = new ApolloServer({
-    // @ts-expect-error
     schema,
     plugins: [
       process.env.NODE_ENV === "production"
@@ -25,7 +24,7 @@ async function main() {
   // const allowedOrigin =
   //   process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test"
   //     ? "http://localhost:3000"
-  //     : "https://www.naisho.org";
+  //     : "https://www.serenity.li";
   // const corsOptions = { credentials: true, origin: allowedOrigin };
 
   const app = express();

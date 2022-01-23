@@ -5,7 +5,10 @@ import { createClient, Provider } from "urql";
 import App from "../app/App";
 
 const client = createClient({
-  url: "http://localhost:4000/graphql",
+  url:
+    process.env.NODE_ENV === "production"
+      ? "https://api.serenity.li/graphql"
+      : "http://localhost:4000/graphql",
 });
 
 export default function Home() {
