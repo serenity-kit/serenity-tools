@@ -8,9 +8,13 @@ The goal of this project is to allow a group of participants (organization) to e
 
 The project is inspired by web of trust and blockchains to aim for the following behaviour:
 
-- Only one verification necessary to establish trust between everyone in the organization
+- Enable asynchronous exchange of data (participants don't have to be online at the same time)
+- Only one verification is necessary to establish trust between everyone in the organization
 - Organization access to a member can be revoked instantly
 - An organization can't be manipulated in hindsight
+- "Efficiently" be able download the current state by a client (e.g. not running a full blockchain node)
+
+https://github.com/local-first-web/auth/discussions/35
 
 ## High Level Architecture
 
@@ -32,6 +36,15 @@ The purpose of the encrypted-state is contain information like usernames to hide
 
 - instant removal (if the server is honest)
 
+## Design Decisions
+
+### Why a central server?
+
+In decentralized systems there are two issues that didn't align with the goals because:
+
+1. A change e.g. adding or removing a participant from a group needs to propagate to all participants before the take effect and therefor state is only [eventual consistent](https://en.wikipedia.org/wiki/Eventual_consistency).
+2. Afaik asynchronous exchange and strong consistency is conflicting. For example blockchains require a lot of online nodes to verify the chain and to achieve a certain gurantee that the current version is the one that will be used and not another fork. There are some ideas and proposal how to tackle it though e.g. [local-first-web/auth discussion](https://github.com/local-first-web/auth/discussions/35)
+
 ## Known Attack Vectors
 
 - Member
@@ -42,7 +55,7 @@ The purpose of the encrypted-state is contain information like usernames to hide
 
 ## Meta Data
 
-Since the chain is public all the meta data about who has access to the group and all their permissions are visible to the central service. This is a known trade-off.
+Since the chain is public all the meta data about who has access to the group and all their permissions are visible to the central service. This is a known trade-off and possibly an evolution of the protocol using zero knowledge proofs (like the [Signal Private Group System](https://eprint.iacr.org/2019/1416)) could reduce the meta data visible to the server while keep the functionality.
 
 ## Security Properties
 
