@@ -36,6 +36,22 @@ export async function addMemberToOrganization(
         });
       }
 
+      // TODO move encryptedState.publicData.clock into Organization model
+      const lastEncryptedStateEntryForThisOrg =
+        await prisma.encryptedState.findFirst({
+          where: { organizationId: org.id },
+        });
+      if (
+        encryptedState.publicData.clock === undefined ||
+        encryptedState.publicData.clock === null ||
+        (lastEncryptedStateEntryForThisOrg &&
+          encryptedState.publicData.clock <=
+            // @ts-expect-error
+            lastEncryptedStateEntryForThisOrg.publicData.clock)
+      ) {
+        throw new Error("EncryptedState clock not present or must increase");
+      }
+
       return await prisma.organization.update({
         where: { id: org.id },
         data: {

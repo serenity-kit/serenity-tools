@@ -20,6 +20,14 @@ export async function createOrganization(
 
       const memberKeys = Object.keys(state.members);
 
+      // TODO move encryptedState.publicData.clock into Organization model
+      if (
+        encryptedState.publicData.clock === undefined ||
+        encryptedState.publicData.clock === null
+      ) {
+        throw new Error("EncryptedState clock not present");
+      }
+
       await prisma.organization.create({
         data: {
           id: state.id,
