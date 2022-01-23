@@ -1,6 +1,6 @@
 import {
   CreateChainTrustChainEvent,
-  MemberAuthorization,
+  MemberProperties,
   TrustChainState,
 } from "./types";
 import { hashTransaction, isValidCreateChainEvent } from "./utils";
@@ -13,12 +13,14 @@ export const applyCreateChainEvent = (
     throw new InvalidTrustChainError("Invalid chain creation event.");
   }
 
-  let members: { [publicKey: string]: MemberAuthorization } = {};
+  let members: { [publicKey: string]: MemberProperties } = {};
   event.authors.forEach((author) => {
     members[author.publicKey] = {
+      lockboxPublicKey: event.transaction.lockboxPublicKeys[author.publicKey],
       isAdmin: true,
       canAddMembers: true,
       canRemoveMembers: true,
+      addedBy: event.authors.map((author) => author.publicKey),
     };
   });
 
@@ -26,6 +28,7 @@ export const applyCreateChainEvent = (
     id: event.transaction.id,
     members,
     lastEventHash: hashTransaction(event.transaction),
-    trustChainStateVersion: 1,
+    encryptedStateClock: 0,
+    trustChainVersion: 1,
   };
 };

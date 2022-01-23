@@ -5,7 +5,7 @@
   "license": "MIT",
   "workspaces": [
     "packages/*",
-    "examples/*"
+    "demos/*"
   ],
   "scripts": {
     "clean": "lerna run clean",

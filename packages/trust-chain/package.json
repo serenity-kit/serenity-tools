@@ -2,7 +2,7 @@
   "name": "@serenity-tools/trust-chain",
   "version": "0.0.1",
   "license": "MIT",
-  "main": "dist/index",
+  "main": "src/index",
   "types": "dist/index",
   "files": [
     "dist"

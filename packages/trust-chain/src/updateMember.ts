@@ -9,12 +9,12 @@ import { hashTransaction } from "./utils";
 export const updateMember = (
   prevHash: string,
   authorKeyPair: sodium.KeyPair,
-  memberPublicKey: string,
+  memberSigningPublicKey: string,
   memberAuthorization: MemberAuthorization
 ): DefaultTrustChainEvent => {
   const transaction: UpdateMemberTransaction = {
     type: "update-member",
-    memberPublicKey,
+    memberSigningPublicKey,
     ...memberAuthorization,
   };
 
