@@ -16,7 +16,6 @@ async function main() {
       ? "http://localhost:3000"
       : "https://www.serenity.li";
   const corsOptions = { credentials: true, origin: allowedOrigin };
-  console.log(allowedOrigin, process.env.NODE_ENV);
 
   const apolloServer = new ApolloServer({
     schema,
