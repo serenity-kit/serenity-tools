@@ -7,6 +7,8 @@ import { updateOrganizationMember as updateOrganizationMemberDb } from "../datab
 import { addEventProposalToOrganization as addEventProposalToOrganizationDb } from "../database/addEventProposalToOrganization";
 import { updateOrganizationEventProposal as updateOrganizationEventProposalDb } from "../database/updateOrganizationEventProposal";
 import { deleteOrganizationEventProposal as deleteOrganizationEventProposalDb } from "../database/deleteOrganizationEventProposal";
+import { requestAuthenticationChallenge as requestAuthenticationChallengeDb } from "../database/requestAuthenticationChallenge";
+import { authenticate as authenticateDb } from "../database/authenticate";
 
 export const CreateOrganizationInput = inputObjectType({
   name: "CreateOrganizationInput",
@@ -34,6 +36,7 @@ export const createOrganization = mutationField("createOrganization", {
   },
   async resolve(root, args, ctx) {
     await createOrganizationDb(
+      ctx.session,
       JSON.parse(args.input.event),
       args.input.keyId,
       JSON.parse(args.input.lockboxes),
@@ -101,6 +104,7 @@ export const addMemberToOrganization = mutationField(
     },
     async resolve(root, args, ctx) {
       await addMemberToOrganizationDb(
+        ctx.session,
         args.input.organizationId,
         JSON.parse(args.input.event),
         args.input.keyId,
@@ -143,6 +147,7 @@ export const removeMemberFromOrganization = mutationField(
     },
     async resolve(root, args, ctx) {
       await removeMemberFromOrganizationDb(
+        ctx.session,
         args.input.organizationId,
         JSON.parse(args.input.event),
         args.input.keyId,
@@ -182,6 +187,7 @@ export const updateOrganizationMember = mutationField(
     },
     async resolve(root, args, ctx) {
       await updateOrganizationMemberDb(
+        ctx.session,
         args.input.organizationId,
         JSON.parse(args.input.event),
         args.input.eventProposalId
@@ -217,6 +223,7 @@ export const addEventProposalToOrganization = mutationField(
     },
     async resolve(root, args, ctx) {
       await addEventProposalToOrganizationDb(
+        ctx.session,
         args.input.organizationId,
         JSON.parse(args.input.event)
       );
@@ -251,6 +258,7 @@ export const updateOrganizationEventProposal = mutationField(
     },
     async resolve(root, args, ctx) {
       await updateOrganizationEventProposalDb(
+        ctx.session,
         args.input.eventProposalId,
         JSON.parse(args.input.event)
       );
@@ -283,8 +291,75 @@ export const deleteOrganizationEventProposal = mutationField(
       }),
     },
     async resolve(root, args, ctx) {
-      await deleteOrganizationEventProposalDb(args.input.eventProposalId);
+      await deleteOrganizationEventProposalDb(
+        ctx.session,
+        args.input.eventProposalId
+      );
       return { success: true };
     },
   }
 );
+
+export const RequestAuthenticationChallengeInput = inputObjectType({
+  name: "RequestAuthenticationChallengeInput",
+  definition(t) {
+    t.nonNull.string("signingPublicKey");
+  },
+});
+
+export const RequestAuthenticationChallengeResult = objectType({
+  name: "RequestAuthenticationChallengeResult",
+  definition(t) {
+    t.string("nonce");
+  },
+});
+
+export const requestAuthenticationChallenge = mutationField(
+  "requestAuthenticationChallenge",
+  {
+    type: RequestAuthenticationChallengeResult,
+    args: {
+      input: arg({
+        type: RequestAuthenticationChallengeInput,
+      }),
+    },
+    async resolve(root, args, ctx) {
+      return await requestAuthenticationChallengeDb(
+        args.input.signingPublicKey
+      );
+    },
+  }
+);
+
+export const AuthenticateInput = inputObjectType({
+  name: "AuthenticateInput",
+  definition(t) {
+    t.nonNull.string("signingPublicKey");
+    t.nonNull.string("nonce");
+    t.nonNull.string("nonceSignature");
+  },
+});
+
+export const AuthenticateResult = objectType({
+  name: "AuthenticateResult",
+  definition(t) {
+    t.boolean("success");
+  },
+});
+
+export const authenticate = mutationField("authenticate", {
+  type: AuthenticateResult,
+  args: {
+    input: arg({
+      type: AuthenticateInput,
+    }),
+  },
+  async resolve(root, args, ctx) {
+    return await authenticateDb(
+      args.input.signingPublicKey,
+      args.input.nonce,
+      args.input.nonceSignature,
+      ctx.session
+    );
+  },
+});

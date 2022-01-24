@@ -1,12 +1,38 @@
 import { prisma } from "./prisma";
 import { DefaultTrustChainEvent } from "@serenity-tools/trust-chain";
+import { getUserFromSession } from "./getUserFromSession";
 
 export async function updateOrganizationEventProposal(
+  session: any,
   eventProposalId: string,
   event: DefaultTrustChainEvent
 ) {
   try {
-    // TODO validate access
+    const currentUser = await getUserFromSession(session);
+    if (
+      !event.authors.some(
+        (author) => author.publicKey === currentUser.publicSigningKey
+      )
+    ) {
+      throw new Error("Failed");
+    }
+
+    const eventProposal = await prisma.eventProposal.findUnique({
+      where: { id: eventProposalId },
+      include: {
+        organization: {
+          select: {
+            members: {
+              where: { publicSigningKey: currentUser.publicSigningKey },
+            },
+          },
+        },
+      },
+    });
+    if (eventProposal.organization.members.length === 0) {
+      throw new Error("Failed");
+    }
+
     // TODO event validation
     return await prisma.eventProposal.update({
       where: { id: eventProposalId },

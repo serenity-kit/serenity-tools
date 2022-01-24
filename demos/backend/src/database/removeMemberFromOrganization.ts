@@ -6,8 +6,10 @@ import {
   EncryptedState,
   Lockbox,
 } from "@serenity-tools/trust-chain";
+import { getUserFromSession } from "./getUserFromSession";
 
 export async function removeMemberFromOrganization(
+  session: any,
   organizationId: string,
   event: DefaultTrustChainEvent,
   keyId: string,
@@ -16,6 +18,18 @@ export async function removeMemberFromOrganization(
   encryptedState: EncryptedState,
   eventProposalId?: string
 ) {
+  const currentUser = await getUserFromSession(session);
+  if (encryptedState.author.publicKey !== currentUser.publicSigningKey) {
+    throw new Error("Failed");
+  }
+  if (
+    !event.authors.some(
+      (author) => author.publicKey === currentUser.publicSigningKey
+    )
+  ) {
+    throw new Error("Failed");
+  }
+
   try {
     return await prisma.$transaction(async (prisma) => {
       const org = await prisma.organization.findUnique({
@@ -34,7 +48,7 @@ export async function removeMemberFromOrganization(
       await prisma.key.create({ data: { id: keyId } });
 
       if (eventProposalId) {
-        // verify that the eventPropsal and event transaction is identical
+        // TODO verify that the eventPropsal and event transaction is identical and the user has access to it
         await prisma.eventProposal.delete({
           where: { id: eventProposalId },
         });
@@ -59,7 +73,7 @@ export async function removeMemberFromOrganization(
       const encryptedStateEntry = await prisma.encryptedState.findUnique({
         where: {
           organizationId_authorPublicSigningKey: {
-            authorPublicSigningKey: encryptedState.author.publicKey, // TODO todo verify that this matches with the current authentication
+            authorPublicSigningKey: encryptedState.author.publicKey,
             organizationId,
           },
         },
@@ -81,7 +95,7 @@ export async function removeMemberFromOrganization(
             upsert: {
               where: {
                 organizationId_authorPublicSigningKey: {
-                  authorPublicSigningKey: encryptedState.author.publicKey, // TODO todo verify that this matches with the current authentication
+                  authorPublicSigningKey: encryptedState.author.publicKey,
                   organizationId,
                 },
               },

@@ -13,10 +13,11 @@
     "start:prod": "PORT=$PORT POSTGRES_URL=$POSTGRES_URL NODE_ENV=production node ./build"
   },
   "dependencies": {
-    "@serenity-tools/trust-chain": "0.0.1",
     "@prisma/client": "3.8.1",
+    "@serenity-tools/trust-chain": "0.0.1",
     "apollo-server-express": "^3.6.2",
     "express": "^4.17.1",
+    "express-session": "^1.17.2",
     "graphql": "^15.8.0",
     "make-promises-safe": "^5.1.0",
     "nexus": "^1.1.0",

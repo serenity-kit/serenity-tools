@@ -21,8 +21,10 @@ import {
   decryptLockbox,
   createLockbox,
   Key,
+  sign,
 } from "@serenity-tools/trust-chain";
 import { useMutation, useQuery } from "urql";
+import sodium from "libsodium-wrappers";
 import { createUserMutationString } from "../graphql/mutations/createUser";
 import { createOrganizationMutationString } from "../graphql/mutations/createOrganization";
 import { addMemberToOrganizationMutationString } from "../graphql/mutations/addMemberToOrganization";
@@ -34,6 +36,8 @@ import { createNewUserKeys } from "../utils/createNewUserKeys";
 import { convertToSigningKeyPair } from "../utils/convertToSigningKeyPair";
 import { updateOrganizationEventProposalMutationString } from "../graphql/mutations/updateOrganizationEventProposal";
 import { deleteOrganizationEventProposalMutationString } from "../graphql/mutations/deleteOrganizationEventProposal";
+import { requestAuthenticationChallengeMutationString } from "../graphql/mutations/requestAuthenticationChallenge";
+import { authenticateMutationString } from "../graphql/mutations/authenticate";
 
 type User = {
   sign: KeyPairBase64;
@@ -46,6 +50,10 @@ export default function App() {
   const [currentUser, setCurrentUser] = useLocalStorage<User>(
     "currentUser",
     null
+  );
+  const [hasActiveSession, setHasActiveSession] = useLocalStorage<boolean>(
+    "hasActiveSession",
+    false
   );
   const [, createUserMutation] = useMutation(createUserMutationString);
   const [, createOrganizationMutation] = useMutation(
@@ -69,6 +77,10 @@ export default function App() {
   const [, deleteOrganizationEventProposalMutation] = useMutation(
     deleteOrganizationEventProposalMutationString
   );
+  const [, requestAuthenticationChallengeMutation] = useMutation(
+    requestAuthenticationChallengeMutationString
+  );
+  const [, authenticateMutation] = useMutation(authenticateMutationString);
 
   const [organizationsQueryResult, refetchOrganizations] = useQuery({
     query: organizationsQueryString,
@@ -187,6 +199,7 @@ export default function App() {
     if (result.data.addEventProposalToOrganization === null) {
       alert("Failed to add the proposal");
     }
+    await refresh();
   };
 
   return (
@@ -202,10 +215,66 @@ export default function App() {
               // TODO handle this on the remote
             }}
           >
-            Delete current user
+            Delete current user from local storage
+          </button>
+          <button
+            disabled={hasActiveSession}
+            onClick={async () => {
+              const result = await requestAuthenticationChallengeMutation({
+                input: { signingPublicKey: currentUser.sign.publicKey },
+              });
+              // TODO move the nonce verification + signing into the trust-chain package as util
+              if (
+                result?.data?.requestAuthenticationChallenge?.nonce &&
+                result.data.requestAuthenticationChallenge.nonce.startsWith(
+                  "server-auth-"
+                ) &&
+                result.data.requestAuthenticationChallenge.nonce.length === 48
+              ) {
+                const authResult = await authenticateMutation({
+                  input: {
+                    signingPublicKey: currentUser.sign.publicKey,
+                    nonce: result.data.requestAuthenticationChallenge.nonce,
+                    nonceSignature: sodium.to_base64(
+                      sign(
+                        result.data.requestAuthenticationChallenge.nonce,
+                        sodium.from_base64(currentUser.sign.privateKey)
+                      )
+                    ),
+                  },
+                });
+                if (authResult?.data?.authenticate?.success) {
+                  await refresh();
+                  setHasActiveSession(true);
+                } else {
+                  setHasActiveSession(false);
+                }
+              } else {
+                alert("Failed to sign in.");
+              }
+            }}
+          >
+            Login
+          </button>
+          <button
+            // disabled={!hasActiveSession}
+            onClick={async () => {
+              // const result = await requestAuthenticationChallengeMutation({
+              //   input: { signingPublicKey: currentUser.sign.publicKey },
+              // });
+              // // TODO move the nonce verification + signing into the trust-chain package as util
+              // if ()
+              // } else {
+              //   alert("Failed to sign out.");
+              // }
+              setHasActiveSession(false);
+              // alert("Failed to sign out");
+            }}
+          >
+            Logout (not implemented yet)
           </button>
           <div>
-            <h2>Organization</h2>
+            <h2>Organizations</h2>
             {organizations.map((org) => {
               const currentUserIsAdmin =
                 org.members[currentUser.sign.publicKey].isAdmin;
@@ -300,7 +369,7 @@ export default function App() {
                           </button>
                           <button
                             type="button"
-                            disabled={!isValidAdminDecision(org, event)}
+                            disabled={!currentUserIsAdmin}
                             onClick={async () => {
                               const result =
                                 await deleteOrganizationEventProposalMutation({

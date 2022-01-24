@@ -4,7 +4,9 @@ import {
   ApolloServerPluginLandingPageGraphQLPlayground,
   ApolloServerPluginLandingPageDisabled,
 } from "apollo-server-core";
+import sodium from "libsodium-wrappers";
 import express from "express";
+import expressSession from "express-session";
 import cors from "cors";
 // import { WebSocketServer } from "ws";
 import { createServer } from "http";
@@ -24,11 +26,39 @@ async function main() {
         ? ApolloServerPluginLandingPageGraphQLPlayground()
         : ApolloServerPluginLandingPageDisabled(),
     ],
+    context: (request) => {
+      return {
+        // @ts-expect-error
+        session: request.req.session,
+        // @ts-expect-error
+        currentUserSigningPublicKey: request.req.session.userSigningPublicKey,
+      };
+    },
   });
   await apolloServer.start();
+  await sodium.ready;
 
   const app = express();
   app.use(cors(corsOptions));
+  const sessionConfig = {
+    secret: process.env.EXPRESS_SESSION_SECRET,
+    cookie: { secure: false },
+    maxAge: 604800000, // 7 days
+    sameSite: "lax",
+    httpOnly: true,
+    resave: false,
+    // saveUninitialized: false
+  };
+
+  if (
+    !(process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test")
+  ) {
+    app.set("trust proxy", 1); // trust first proxy
+    sessionConfig.cookie.secure = true; // serve secure cookies
+  }
+
+  app.use(expressSession(sessionConfig));
+
   apolloServer.applyMiddleware({ app, cors: corsOptions });
 
   const server = createServer(app);

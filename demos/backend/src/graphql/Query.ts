@@ -65,7 +65,7 @@ export const Query = queryType({
         signingPublicKey: arg({ type: "String" }),
       },
       async resolve(root, args, ctx) {
-        return getOrganizations(args.signingPublicKey);
+        return await getOrganizations(args.signingPublicKey, ctx.session);
       },
     });
   },

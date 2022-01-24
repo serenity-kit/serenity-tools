@@ -17,3 +17,4 @@ export * from "./state/verifyAndApplyEncryptedState";
 export * from "./errors";
 export * from "./types";
 export { isValidAdminDecision, getAdminCount, canonicalize } from "./utils";
+export { verifySignature, sign } from "./state/crypto";

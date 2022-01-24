@@ -59,10 +59,18 @@ model Organization {
 }
 
 model User {
-  publicSigningKey String           @id
-  organizations    Organization[]
-  encryptedStates  EncryptedState[]
-  lockboxes        Lockbox[]
+  publicSigningKey        String                    @id
+  organizations           Organization[]
+  encryptedStates         EncryptedState[]
+  lockboxes               Lockbox[]
+  authenticationChallenge AuthenticationChallenge[]
+}
+
+model AuthenticationChallenge {
+  nonce                String   @id
+  user                 User     @relation(fields: [userPublicSigningKey], references: [publicSigningKey])
+  userPublicSigningKey String
+  validUntil           DateTime
 }
 
 model Event {

@@ -68,6 +68,19 @@ Since the chain is public all the meta data about who has access to the group an
 - [Forward Secrecy](https://en.wikipedia.org/wiki/Forward_secrecy) is currently not supported. A future evolution of the project ideally uses a [ratchet](https://en.wikipedia.org/wiki/Double_Ratchet_Algorithm) to enable forward secrecy. Inspirations could be [DCGKA](https://eprint.iacr.org/2020/1281).
 - [Post-compromise security](https://eprint.iacr.org/2016/221.pdf) is currently not supported. Only when a member gets removed the synchronous encryption key and related lockboxes are replaced which leads to PCS in this case.
 
+## Server Authentication
+
+For authentication with the server the client has to request a challenge from the server. A nonce is returned. The client verifies that the nonce is prefixed with the text `"server-auth-"` followed by a UUID. The UUID is only verified by the length. Once this is confirmed the client will sign the challenge and return the signature to sign in.
+The server in the response sets a HTTP only session cookie to initialize a session.
+
+The purpose of the nonce prefix is to avoid the server sending any other message that the client would sign accidentally (kind of a chosen-plaintext attack).
+
+### Possible Improvement
+
+It might make sense to also include an encryption challenge to verify that the client also has access to the lockbox private key.
+
+This though needs caution to prevent to prevent a chosen-plaintext attack as described [here](https://crypto.stackexchange.com/a/76662).
+
 ## Demo
 
 The demo is available at [https://www.serenity.li/](https://www.serenity.li/). Keep in mind the data is regularily wiped.
@@ -76,7 +89,13 @@ The demo is available at [https://www.serenity.li/](https://www.serenity.li/). K
 
 - The private and public keys are currently storred in the localstorage. This is not as planned in the production ready implementation where they should only storred encrypted secured by a password or WebAuthn.
 - Some buttons are shown as active e.g. "Demote to member", but the actual action will fail in certain cases e.g. when the current user is the last admin. In this case the error will only be visible in the console.
-- The server API lacks some authorization checks.
+- Remove member (based on a event proposal does not work)
+- Missing checks if the publicKeys are valid for createUser
+- Missing checks if the publicKeys match an existing user when adding a member to an organisation
+- Chain/Encryped State related
+  - when promoting someone to an admin then set the name in the encrypted state
+  - when removing a member, take over the encrypted state updates from them
+  - when removing permissions from a member, take over the encrypted state updates
 
 Note: The whole project is prototype style code e.g. some functions of the trust chain package are mutating the input object.
 
@@ -97,7 +116,7 @@ Note: The whole project is prototype style code e.g. some functions of the trust
 
 - `update-member`
 
-  - needs 50% admins if a member is promoted or demoted as admin
+  - needs >50% admins if a member is promoted or demoted as admin
   - needs one admin to update
 
 - `end-chain` TODO

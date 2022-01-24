@@ -5,13 +5,27 @@ import {
   Lockbox,
   resolveState,
 } from "@serenity-tools/trust-chain";
+import { getUserFromSession } from "./getUserFromSession";
 
 export async function createOrganization(
+  session: any,
   event: CreateChainTrustChainEvent,
   keyId: string,
   lockboxes: { [signingPublicKey: string]: Lockbox },
   encryptedState: EncryptedState
 ) {
+  const currentUser = await getUserFromSession(session);
+  if (encryptedState.author.publicKey !== currentUser.publicSigningKey) {
+    throw new Error("Failed");
+  }
+  if (
+    !event.authors.some(
+      (author) => author.publicKey === currentUser.publicSigningKey
+    )
+  ) {
+    throw new Error("Failed");
+  }
+
   try {
     const state = resolveState([event]);
 
@@ -48,7 +62,7 @@ export async function createOrganization(
               publicData: encryptedState.publicData,
               author: {
                 connect: {
-                  publicSigningKey: encryptedState.author.publicKey, // TODO todo verify that this matches with the current authentication
+                  publicSigningKey: encryptedState.author.publicKey,
                 },
               },
               authorSignature: encryptedState.author.signature,

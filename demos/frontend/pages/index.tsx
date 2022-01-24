@@ -9,6 +9,7 @@ const client = createClient({
     process.env.NODE_ENV === "production"
       ? "https://api.serenity.li/graphql"
       : "http://localhost:4000/graphql",
+  fetchOptions: { credentials: "include" }, // necessary for the cookie to be included
 });
 
 export default function Home() {

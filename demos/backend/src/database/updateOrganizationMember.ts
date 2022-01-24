@@ -4,14 +4,26 @@ import {
   applyEvent,
   TrustChainState,
 } from "@serenity-tools/trust-chain";
+import { getUserFromSession } from "./getUserFromSession";
 
 export async function updateOrganizationMember(
+  session: any,
   organizationId: string,
   event: DefaultTrustChainEvent,
   eventProposalId?: string
 ) {
+  const currentUser = await getUserFromSession(session);
+  if (
+    !event.authors.some(
+      (author) => author.publicKey === currentUser.publicSigningKey
+    )
+  ) {
+    throw new Error("Failed");
+  }
+
   try {
     return await prisma.$transaction(async (prisma) => {
+      // verify the user has access to this organization
       const org = await prisma.organization.findUnique({
         where: { id: organizationId },
       });
@@ -26,7 +38,7 @@ export async function updateOrganizationMember(
       );
 
       if (eventProposalId) {
-        // verify that the eventPropsal and event transaction is identical
+        // TODO verify that the eventPropsal and event transaction is identical and the user has access to it's organization
         await prisma.eventProposal.delete({
           where: { id: eventProposalId },
         });

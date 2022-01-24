@@ -5,8 +5,10 @@ import {
   TrustChainState,
   Lockbox,
 } from "@serenity-tools/trust-chain";
+import { getUserFromSession } from "./getUserFromSession";
 
 export async function addMemberToOrganization(
+  session: any,
   organizationId: string,
   event: DefaultTrustChainEvent,
   keyId: string,
@@ -14,6 +16,18 @@ export async function addMemberToOrganization(
   encryptedState: any,
   eventProposalId?: string
 ) {
+  const currentUser = await getUserFromSession(session);
+  if (encryptedState.author.publicKey !== currentUser.publicSigningKey) {
+    throw new Error("Failed");
+  }
+  if (
+    !event.authors.some(
+      (author) => author.publicKey === currentUser.publicSigningKey
+    )
+  ) {
+    throw new Error("Failed");
+  }
+
   try {
     return await prisma.$transaction(async (prisma) => {
       const org = await prisma.organization.findUnique({
@@ -30,7 +44,7 @@ export async function addMemberToOrganization(
       );
 
       if (eventProposalId) {
-        // verify that the eventPropsal and event transaction is identical
+        // TODO verify that the eventPropsal and event transaction is identical and the user has access to it
         await prisma.eventProposal.delete({
           where: { id: eventProposalId },
         });
@@ -67,7 +81,7 @@ export async function addMemberToOrganization(
             upsert: {
               where: {
                 organizationId_authorPublicSigningKey: {
-                  authorPublicSigningKey: encryptedState.author.publicKey, // TODO todo verify that this matches with the current authentication
+                  authorPublicSigningKey: encryptedState.author.publicKey,
                   organizationId,
                 },
               },
@@ -93,7 +107,7 @@ export async function addMemberToOrganization(
                 publicData: encryptedState.publicData,
                 author: {
                   connect: {
-                    publicSigningKey: encryptedState.author.publicKey, // TODO todo verify that this matches with the current authentication
+                    publicSigningKey: encryptedState.author.publicKey,
                   },
                 },
                 authorSignature: encryptedState.author.signature,

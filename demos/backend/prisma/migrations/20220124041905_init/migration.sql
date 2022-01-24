@@ -48,6 +48,15 @@ CREATE TABLE "User" (
 );
 
 -- CreateTable
+CREATE TABLE "AuthenticationChallenge" (
+    "nonce" TEXT NOT NULL,
+    "userPublicSigningKey" TEXT NOT NULL,
+    "validUntil" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AuthenticationChallenge_pkey" PRIMARY KEY ("nonce")
+);
+
+-- CreateTable
 CREATE TABLE "Event" (
     "id" SERIAL NOT NULL,
     "content" JSONB NOT NULL,
@@ -109,6 +118,9 @@ ALTER TABLE "Lockbox" ADD CONSTRAINT "Lockbox_receiverSigningPublicKey_fkey" FOR
 
 -- AddForeignKey
 ALTER TABLE "Lockbox" ADD CONSTRAINT "Lockbox_keyId_fkey" FOREIGN KEY ("keyId") REFERENCES "Key"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AuthenticationChallenge" ADD CONSTRAINT "AuthenticationChallenge_userPublicSigningKey_fkey" FOREIGN KEY ("userPublicSigningKey") REFERENCES "User"("publicSigningKey") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Event" ADD CONSTRAINT "Event_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

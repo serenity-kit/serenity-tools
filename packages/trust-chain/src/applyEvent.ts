@@ -37,6 +37,15 @@ export const applyEvent = (
     }
   });
 
+  const publicKeys = event.authors.map((author) => author.publicKey);
+  const hasDuplicatedAuthors = publicKeys.some((publicKey, index) => {
+    return publicKeys.indexOf(publicKey) != index;
+  });
+  // TODO add tests for this case
+  if (hasDuplicatedAuthors) {
+    throw new InvalidTrustChainError("An author can sign the event only once.");
+  }
+
   if (event.transaction.type === "create") {
     throw new InvalidTrustChainError("Only one create event is allowed.");
   }
