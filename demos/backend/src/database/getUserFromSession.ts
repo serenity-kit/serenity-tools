@@ -2,10 +2,10 @@ import { AuthenticationError } from "apollo-server-express";
 import { prisma } from "./prisma";
 
 export async function getUserFromSession(session: any) {
+  if (!session.userSigningPublicKey) {
+    throw new AuthenticationError("Failed");
+  }
   try {
-    if (!session.userSigningPublicKey) {
-      throw new AuthenticationError("Failed");
-    }
     const currentUser = prisma.user.findUnique({
       where: { publicSigningKey: session.userSigningPublicKey },
     });

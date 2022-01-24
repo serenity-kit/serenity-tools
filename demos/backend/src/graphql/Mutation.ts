@@ -363,3 +363,21 @@ export const authenticate = mutationField("authenticate", {
     );
   },
 });
+
+export const LogoutResult = objectType({
+  name: "LogoutResult",
+  definition(t) {
+    t.boolean("success");
+  },
+});
+
+export const logout = mutationField("logout", {
+  type: LogoutResult,
+  async resolve(root, args, ctx) {
+    delete ctx.session.userSigningPublicKey;
+
+    return {
+      success: true,
+    };
+  },
+});

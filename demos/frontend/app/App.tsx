@@ -1,4 +1,4 @@
-import React, { Fragment } from "react";
+import React, { Fragment, useCallback } from "react";
 import useLocalStorage from "../hooks/useLocalStorage";
 import {
   addMember,
@@ -38,22 +38,22 @@ import { updateOrganizationEventProposalMutationString } from "../graphql/mutati
 import { deleteOrganizationEventProposalMutationString } from "../graphql/mutations/deleteOrganizationEventProposal";
 import { requestAuthenticationChallengeMutationString } from "../graphql/mutations/requestAuthenticationChallenge";
 import { authenticateMutationString } from "../graphql/mutations/authenticate";
+import { logoutMutationString } from "../graphql/mutations/logout";
 
 type User = {
   sign: KeyPairBase64;
   lockbox: KeyPairBase64;
 };
 
-export default function App() {
+export default function App(props: {
+  isAuthenticated: boolean;
+  setIsAuthenticated: (newIsAuthenticated: boolean) => void;
+}) {
   // NOTE: Never store a privateKey in an unsecure storage like Localstorage
   // This here is only for demo purposes
   const [currentUser, setCurrentUser] = useLocalStorage<User>(
     "currentUser",
     null
-  );
-  const [hasActiveSession, setHasActiveSession] = useLocalStorage<boolean>(
-    "hasActiveSession",
-    false
   );
   const [, createUserMutation] = useMutation(createUserMutationString);
   const [, createOrganizationMutation] = useMutation(
@@ -81,15 +81,15 @@ export default function App() {
     requestAuthenticationChallengeMutationString
   );
   const [, authenticateMutation] = useMutation(authenticateMutationString);
+  const [, logoutMutation] = useMutation(logoutMutationString);
 
   const [organizationsQueryResult, refetchOrganizations] = useQuery({
     query: organizationsQueryString,
-    variables: { signingPublicKey: currentUser?.sign.publicKey },
   });
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     await refetchOrganizations({ requestPolicy: "network-only" });
-  };
+  }, [refetchOrganizations]);
 
   const organizations: (TrustChainState & {
     eventProposals: any[];
@@ -216,15 +216,15 @@ export default function App() {
           <pre>{JSON.stringify(currentUser, undefined, 2)}</pre>
           <button
             onClick={() => {
-              setHasActiveSession(false);
-              setCurrentUser(null);
               // TODO handle this on the remote
+              props.setIsAuthenticated(false);
+              setCurrentUser(null);
             }}
           >
             Delete current user from local storage
           </button>
           <button
-            // disabled={hasActiveSession}
+            disabled={props.isAuthenticated}
             onClick={async () => {
               const result = await requestAuthenticationChallengeMutation({
                 input: { signingPublicKey: currentUser.sign.publicKey },
@@ -251,9 +251,9 @@ export default function App() {
                 });
                 if (authResult?.data?.authenticate?.success) {
                   await refresh();
-                  setHasActiveSession(true);
+                  props.setIsAuthenticated(true);
                 } else {
-                  setHasActiveSession(false);
+                  props.setIsAuthenticated(false);
                 }
               } else {
                 alert("Failed to sign in.");
@@ -263,470 +263,481 @@ export default function App() {
             Login
           </button>
           <button
-            // disabled={!hasActiveSession}
+            disabled={!props.isAuthenticated}
             onClick={async () => {
-              // const result = await requestAuthenticationChallengeMutation({
-              //   input: { signingPublicKey: currentUser.sign.publicKey },
-              // });
-              // // TODO move the nonce verification + signing into the trust-chain package as util
-              // if ()
-              // } else {
-              //   alert("Failed to sign out.");
-              // }
-              setHasActiveSession(false);
-              // alert("Failed to sign out");
+              const result = await logoutMutation({ input: {} });
+              if (result.data?.logout?.success) {
+                props.setIsAuthenticated(false);
+              } else {
+                alert("Failed to sign out.");
+              }
             }}
           >
-            Logout (not implemented yet)
+            Logout
           </button>
-          <div>Logged in: {hasActiveSession ? "true" : "false"}</div>
-          <div>
-            <h2>Organizations</h2>
-            {organizations.map((org) => {
-              const currentUserIsAdmin =
-                org.members[currentUser.sign.publicKey].isAdmin;
-              return (
-                <div key={org.id}>
-                  <pre>{JSON.stringify(org.id, undefined, 2)}</pre>
-                  <pre>
-                    Last Key: {JSON.stringify(org.lastKey, undefined, 2)}
-                  </pre>
+          {props.isAuthenticated && (
+            <div>
+              <h2>Organizations</h2>
+              {organizations.map((org) => {
+                const currentUserIsAdmin =
+                  org.members[currentUser.sign.publicKey].isAdmin;
+                return (
+                  <div key={org.id}>
+                    <pre>{JSON.stringify(org.id, undefined, 2)}</pre>
+                    <pre>
+                      Last Key: {JSON.stringify(org.lastKey, undefined, 2)}
+                    </pre>
 
-                  <div>
-                    <h3>Event Proposals</h3>
-                    {org.eventProposals.map((eventProposal) => {
-                      const event: DefaultTrustChainEvent = JSON.parse(
-                        eventProposal.content
-                      );
-                      return (
-                        <Fragment key={eventProposal.id}>
-                          <pre>
-                            <div>{eventProposal.id}</div>
-                            {JSON.stringify(event, undefined, 2)}
-                          </pre>
-                          <button
-                            type="button"
-                            disabled={!currentUserIsAdmin}
-                            onClick={async () => {
-                              const newEvent = addAuthorToEvent(
-                                event,
-                                convertToSigningKeyPair(currentUser.sign)
-                              );
-
-                              const result =
-                                await updateOrganizationEventProposalMutation({
-                                  input: {
-                                    eventProposalId: eventProposal.id,
-                                    event: JSON.stringify(newEvent),
-                                  },
-                                });
-                              if (
-                                result.data.updateOrganizationEventProposal ===
-                                null
-                              ) {
-                                alert("Failed to sign the event");
-                              }
-                              await refresh();
-                            }}
-                          >
-                            Sign event
-                          </button>
-                          <button
-                            type="button"
-                            disabled={!isValidAdminDecision(org, event)}
-                            onClick={async () => {
-                              if (event.transaction.type === "update-member") {
-                                applyEvent(org, event);
-                                const result =
-                                  await updateOrganizationMemberMutation({
-                                    input: {
-                                      organizationId: org.id,
-                                      event: JSON.stringify(event),
-                                      eventProposalId: eventProposal.id,
-                                    },
-                                  });
-                                if (
-                                  result.data.updateOrganizationMember === null
-                                ) {
-                                  alert("Failed to update the member");
-                                }
-                                await refresh();
-                              } else if (
-                                event.transaction.type === "add-member"
-                              ) {
-                                alert(
-                                  "Adding member is currently not allowed."
-                                );
-                              } else if (
-                                event.transaction.type === "remove-member"
-                              ) {
-                                alert(
-                                  "Removing an admin is currently not implemented."
-                                );
-                                // applyEvent(org, event);
-                                // await removeMemberFromOrganizationMutation({
-                                //   input: {
-                                //     organizationId: org.id,
-                                //     event: JSON.stringify(event),
-                                //     eventProposalId: eventProposal.id,
-                                //   },
-                                // });
-                                // await refresh();
-                              }
-                            }}
-                          >
-                            Submit event
-                          </button>
-                          <button
-                            type="button"
-                            disabled={!currentUserIsAdmin}
-                            onClick={async () => {
-                              const result =
-                                await deleteOrganizationEventProposalMutation({
-                                  input: { eventProposalId: eventProposal.id },
-                                });
-                              if (
-                                result.data.deleteOrganizationEventProposal ===
-                                null
-                              ) {
-                                alert("Failed to delete the event proposal");
-                              }
-                              await refresh();
-                            }}
-                          >
-                            Delete event proposal
-                          </button>
-                        </Fragment>
-                      );
-                    })}
-                  </div>
-
-                  <div>
-                    <h3>Members</h3>
-                    {Object.keys(org.members).map((key) => {
-                      return (
-                        <div key={key}>
-                          <pre>
-                            <div>
-                              <h4>
-                                {org.members[key].name} ({key})
-                              </h4>
-                            </div>
-                            {JSON.stringify(org.members[key], undefined, 2)}
-
-                            {getAdminCount(org) > 1 ? (
-                              <button
-                                type="button"
-                                disabled={!currentUserIsAdmin}
-                                onClick={() => {
-                                  org.members[key].isAdmin
-                                    ? proposeMemberUpdate(org, key, {
-                                        isAdmin: false,
-                                        canAddMembers: false,
-                                        canRemoveMembers: false,
-                                      })
-                                    : proposeMemberUpdate(org, key, {
-                                        isAdmin: true,
-                                        canAddMembers: true,
-                                        canRemoveMembers: true,
-                                      });
-                                }}
-                              >
-                                {org.members[key].isAdmin
-                                  ? "Propose to demote to member"
-                                  : "Propose to promote to admin"}
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                disabled={!currentUserIsAdmin}
-                                onClick={() => {
-                                  org.members[key].isAdmin
-                                    ? updateMemberFunc(org, key, {
-                                        isAdmin: false,
-                                        canAddMembers: false,
-                                        canRemoveMembers: false,
-                                      })
-                                    : updateMemberFunc(org, key, {
-                                        isAdmin: true,
-                                        canAddMembers: true,
-                                        canRemoveMembers: true,
-                                      });
-                                }}
-                              >
-                                {org.members[key].isAdmin
-                                  ? "Demote to member"
-                                  : "Promote to admin"}
-                              </button>
-                            )}
-
-                            {!org.members[key].isAdmin && (
-                              <form
-                                onSubmit={async (formEvent) => {
-                                  formEvent.preventDefault();
-                                  updateMemberFunc(org, key, {
-                                    isAdmin: false,
-                                    canAddMembers: formEvent.target[0].checked,
-                                    canRemoveMembers:
-                                      formEvent.target[1].checked,
-                                  });
-                                }}
-                              >
-                                <label>
-                                  canAddMembers
-                                  <input
-                                    disabled={!currentUserIsAdmin}
-                                    type="checkbox"
-                                    defaultChecked={
-                                      org.members[key].canAddMembers
-                                    }
-                                  />
-                                </label>
-                                <label>
-                                  canRemoveMembers
-                                  <input
-                                    disabled={!currentUserIsAdmin}
-                                    type="checkbox"
-                                    defaultChecked={
-                                      org.members[key].canRemoveMembers
-                                    }
-                                  />
-                                </label>
-
-                                <button disabled={!currentUserIsAdmin}>
-                                  Update Member
-                                </button>
-                              </form>
-                            )}
-                          </pre>
-                          <button
-                            disabled={!currentUserIsAdmin}
-                            onClick={async () => {
-                              const event = removeMember(
-                                org.lastEventHash,
-                                convertToSigningKeyPair(currentUser.sign),
-                                key
-                              );
-
-                              if (org.members[key].isAdmin) {
-                                const result =
-                                  await addEventProposalToOrganizationMutation({
-                                    input: {
-                                      organizationId: org.id,
-                                      event: JSON.stringify(event),
-                                    },
-                                  });
-                                if (
-                                  result.data.addEventProposalToOrganization ===
-                                  null
-                                ) {
-                                  alert("Failed to add the proposal");
-                                }
-                                await refresh();
-                              } else {
-                                const newState = applyEvent(org, event);
-                                const newKey = createKey();
-                                const lockboxes = createLockboxes(
-                                  newKey,
-                                  currentUser.lockbox.privateKey,
-                                  currentUser.lockbox.publicKey,
-                                  newState
-                                );
-                                // should use a deep clone
-                                const newEncryptedStateUpdate = {
-                                  ...org.currentUserEncryptedState,
-                                };
-                                // might not exits, but should not throw
-                                delete newEncryptedStateUpdate["members"][key];
-                                const encryptedState = encryptState(
-                                  newState,
-                                  newEncryptedStateUpdate,
-                                  newKey,
+                    <div>
+                      <h3>Event Proposals</h3>
+                      {org.eventProposals.map((eventProposal) => {
+                        const event: DefaultTrustChainEvent = JSON.parse(
+                          eventProposal.content
+                        );
+                        return (
+                          <Fragment key={eventProposal.id}>
+                            <pre>
+                              <div>{eventProposal.id}</div>
+                              {JSON.stringify(event, undefined, 2)}
+                            </pre>
+                            <button
+                              type="button"
+                              disabled={!currentUserIsAdmin}
+                              onClick={async () => {
+                                const newEvent = addAuthorToEvent(
+                                  event,
                                   convertToSigningKeyPair(currentUser.sign)
                                 );
 
                                 const result =
-                                  await removeMemberFromOrganizationMutation({
-                                    input: {
-                                      organizationId: org.id,
-                                      event: JSON.stringify(event),
-                                      keyId: newKey.keyId,
-                                      lockboxes: JSON.stringify(
-                                        lockboxes.lockboxes
-                                      ),
-                                      encryptedState:
-                                        JSON.stringify(encryptedState),
-                                    },
-                                  });
+                                  await updateOrganizationEventProposalMutation(
+                                    {
+                                      input: {
+                                        eventProposalId: eventProposal.id,
+                                        event: JSON.stringify(newEvent),
+                                      },
+                                    }
+                                  );
                                 if (
-                                  result.data.removeMemberFromOrganization ===
-                                  null
+                                  result.data
+                                    .updateOrganizationEventProposal === null
                                 ) {
-                                  alert("Failed to remove member");
+                                  alert("Failed to sign the event");
                                 }
                                 await refresh();
-                              }
-                            }}
-                          >
-                            {org.members[key].isAdmin
-                              ? "Propose to remove admin"
-                              : "Remove member"}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                              }}
+                            >
+                              Sign event
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!isValidAdminDecision(org, event)}
+                              onClick={async () => {
+                                if (
+                                  event.transaction.type === "update-member"
+                                ) {
+                                  applyEvent(org, event);
+                                  const result =
+                                    await updateOrganizationMemberMutation({
+                                      input: {
+                                        organizationId: org.id,
+                                        event: JSON.stringify(event),
+                                        eventProposalId: eventProposal.id,
+                                      },
+                                    });
+                                  if (
+                                    result.data.updateOrganizationMember ===
+                                    null
+                                  ) {
+                                    alert("Failed to update the member");
+                                  }
+                                  await refresh();
+                                } else if (
+                                  event.transaction.type === "add-member"
+                                ) {
+                                  alert(
+                                    "Adding member is currently not allowed."
+                                  );
+                                } else if (
+                                  event.transaction.type === "remove-member"
+                                ) {
+                                  alert(
+                                    "Removing an admin is currently not implemented."
+                                  );
+                                  // applyEvent(org, event);
+                                  // await removeMemberFromOrganizationMutation({
+                                  //   input: {
+                                  //     organizationId: org.id,
+                                  //     event: JSON.stringify(event),
+                                  //     eventProposalId: eventProposal.id,
+                                  //   },
+                                  // });
+                                  // await refresh();
+                                }
+                              }}
+                            >
+                              Submit event
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!currentUserIsAdmin}
+                              onClick={async () => {
+                                const result =
+                                  await deleteOrganizationEventProposalMutation(
+                                    {
+                                      input: {
+                                        eventProposalId: eventProposal.id,
+                                      },
+                                    }
+                                  );
+                                if (
+                                  result.data
+                                    .deleteOrganizationEventProposal === null
+                                ) {
+                                  alert("Failed to delete the event proposal");
+                                }
+                                await refresh();
+                              }}
+                            >
+                              Delete event proposal
+                            </button>
+                          </Fragment>
+                        );
+                      })}
+                    </div>
 
-                  <h3>Add Member</h3>
-                  <form
-                    onSubmit={async (formEvent) => {
-                      formEvent.preventDefault();
-                      const newMemberSigningPublicKey =
-                        formEvent.target[0].value;
-                      const newMemberLockboxPublicKey =
-                        formEvent.target[1].value;
-                      const username = formEvent.target[2].value;
-                      if (username === "") {
-                        alert("Username required");
-                        return;
-                      }
-                      const event = addMember(
-                        org.lastEventHash,
-                        convertToSigningKeyPair(currentUser.sign),
-                        newMemberSigningPublicKey,
-                        newMemberLockboxPublicKey,
-                        {
-                          isAdmin: false,
-                          canAddMembers: formEvent.target[3].checked,
-                          canRemoveMembers: formEvent.target[4].checked,
+                    <div>
+                      <h3>Members</h3>
+                      {Object.keys(org.members).map((key) => {
+                        return (
+                          <div key={key}>
+                            <pre>
+                              <div>
+                                <h4>
+                                  {org.members[key].name} ({key})
+                                </h4>
+                              </div>
+                              {JSON.stringify(org.members[key], undefined, 2)}
+
+                              {getAdminCount(org) > 1 ? (
+                                <button
+                                  type="button"
+                                  disabled={!currentUserIsAdmin}
+                                  onClick={() => {
+                                    org.members[key].isAdmin
+                                      ? proposeMemberUpdate(org, key, {
+                                          isAdmin: false,
+                                          canAddMembers: false,
+                                          canRemoveMembers: false,
+                                        })
+                                      : proposeMemberUpdate(org, key, {
+                                          isAdmin: true,
+                                          canAddMembers: true,
+                                          canRemoveMembers: true,
+                                        });
+                                  }}
+                                >
+                                  {org.members[key].isAdmin
+                                    ? "Propose to demote to member"
+                                    : "Propose to promote to admin"}
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={!currentUserIsAdmin}
+                                  onClick={() => {
+                                    org.members[key].isAdmin
+                                      ? updateMemberFunc(org, key, {
+                                          isAdmin: false,
+                                          canAddMembers: false,
+                                          canRemoveMembers: false,
+                                        })
+                                      : updateMemberFunc(org, key, {
+                                          isAdmin: true,
+                                          canAddMembers: true,
+                                          canRemoveMembers: true,
+                                        });
+                                  }}
+                                >
+                                  {org.members[key].isAdmin
+                                    ? "Demote to member"
+                                    : "Promote to admin"}
+                                </button>
+                              )}
+
+                              {!org.members[key].isAdmin && (
+                                <form
+                                  onSubmit={async (formEvent) => {
+                                    formEvent.preventDefault();
+                                    updateMemberFunc(org, key, {
+                                      isAdmin: false,
+                                      canAddMembers:
+                                        formEvent.target[0].checked,
+                                      canRemoveMembers:
+                                        formEvent.target[1].checked,
+                                    });
+                                  }}
+                                >
+                                  <label>
+                                    canAddMembers
+                                    <input
+                                      disabled={!currentUserIsAdmin}
+                                      type="checkbox"
+                                      defaultChecked={
+                                        org.members[key].canAddMembers
+                                      }
+                                    />
+                                  </label>
+                                  <label>
+                                    canRemoveMembers
+                                    <input
+                                      disabled={!currentUserIsAdmin}
+                                      type="checkbox"
+                                      defaultChecked={
+                                        org.members[key].canRemoveMembers
+                                      }
+                                    />
+                                  </label>
+
+                                  <button disabled={!currentUserIsAdmin}>
+                                    Update Member
+                                  </button>
+                                </form>
+                              )}
+                            </pre>
+                            <button
+                              disabled={!currentUserIsAdmin}
+                              onClick={async () => {
+                                const event = removeMember(
+                                  org.lastEventHash,
+                                  convertToSigningKeyPair(currentUser.sign),
+                                  key
+                                );
+
+                                if (org.members[key].isAdmin) {
+                                  const result =
+                                    await addEventProposalToOrganizationMutation(
+                                      {
+                                        input: {
+                                          organizationId: org.id,
+                                          event: JSON.stringify(event),
+                                        },
+                                      }
+                                    );
+                                  if (
+                                    result.data
+                                      .addEventProposalToOrganization === null
+                                  ) {
+                                    alert("Failed to add the proposal");
+                                  }
+                                  await refresh();
+                                } else {
+                                  const newState = applyEvent(org, event);
+                                  const newKey = createKey();
+                                  const lockboxes = createLockboxes(
+                                    newKey,
+                                    currentUser.lockbox.privateKey,
+                                    currentUser.lockbox.publicKey,
+                                    newState
+                                  );
+                                  // should use a deep clone
+                                  const newEncryptedStateUpdate = {
+                                    ...org.currentUserEncryptedState,
+                                  };
+                                  // might not exits, but should not throw
+                                  delete newEncryptedStateUpdate["members"][
+                                    key
+                                  ];
+                                  const encryptedState = encryptState(
+                                    newState,
+                                    newEncryptedStateUpdate,
+                                    newKey,
+                                    convertToSigningKeyPair(currentUser.sign)
+                                  );
+
+                                  const result =
+                                    await removeMemberFromOrganizationMutation({
+                                      input: {
+                                        organizationId: org.id,
+                                        event: JSON.stringify(event),
+                                        keyId: newKey.keyId,
+                                        lockboxes: JSON.stringify(
+                                          lockboxes.lockboxes
+                                        ),
+                                        encryptedState:
+                                          JSON.stringify(encryptedState),
+                                      },
+                                    });
+                                  if (
+                                    result.data.removeMemberFromOrganization ===
+                                    null
+                                  ) {
+                                    alert("Failed to remove member");
+                                  }
+                                  await refresh();
+                                }
+                              }}
+                            >
+                              {org.members[key].isAdmin
+                                ? "Propose to remove admin"
+                                : "Remove member"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <h3>Add Member</h3>
+                    <form
+                      onSubmit={async (formEvent) => {
+                        formEvent.preventDefault();
+                        const newMemberSigningPublicKey =
+                          formEvent.target[0].value;
+                        const newMemberLockboxPublicKey =
+                          formEvent.target[1].value;
+                        const username = formEvent.target[2].value;
+                        if (username === "") {
+                          alert("Username required");
+                          return;
                         }
-                      );
-                      if (event.transaction.type !== "add-member") {
-                        alert("Failed to add the member");
-                        return;
-                      }
+                        const event = addMember(
+                          org.lastEventHash,
+                          convertToSigningKeyPair(currentUser.sign),
+                          newMemberSigningPublicKey,
+                          newMemberLockboxPublicKey,
+                          {
+                            isAdmin: false,
+                            canAddMembers: formEvent.target[3].checked,
+                            canRemoveMembers: formEvent.target[4].checked,
+                          }
+                        );
+                        if (event.transaction.type !== "add-member") {
+                          alert("Failed to add the member");
+                          return;
+                        }
 
-                      applyEvent(org, event);
+                        applyEvent(org, event);
 
-                      const lockbox = createLockbox(
-                        org.lastKey,
-                        currentUser.lockbox.privateKey,
-                        currentUser.lockbox.publicKey,
-                        newMemberSigningPublicKey,
-                        newMemberLockboxPublicKey
-                      );
+                        const lockbox = createLockbox(
+                          org.lastKey,
+                          currentUser.lockbox.privateKey,
+                          currentUser.lockbox.publicKey,
+                          newMemberSigningPublicKey,
+                          newMemberLockboxPublicKey
+                        );
 
-                      const encryptedState = encryptState(
-                        org,
-                        {
-                          ...(org.currentUserEncryptedState || {}),
-                          members: {
-                            ...(org.currentUserEncryptedState?.members || {}),
-                            [newMemberSigningPublicKey]: { name: username },
+                        const encryptedState = encryptState(
+                          org,
+                          {
+                            ...(org.currentUserEncryptedState || {}),
+                            members: {
+                              ...(org.currentUserEncryptedState?.members || {}),
+                              [newMemberSigningPublicKey]: { name: username },
+                            },
                           },
-                        },
-                        org.lastKey,
-                        convertToSigningKeyPair(currentUser.sign)
-                      );
+                          org.lastKey,
+                          convertToSigningKeyPair(currentUser.sign)
+                        );
 
-                      const result = await addMemberToOrganizationMutation({
-                        input: {
-                          organizationId: org.id,
-                          event: JSON.stringify(event),
-                          keyId: org.lastKey.keyId,
-                          lockbox: JSON.stringify(lockbox),
-                          encryptedState: JSON.stringify(encryptedState),
-                        },
-                      });
-                      if (result.data.addMemberToOrganization === null) {
-                        alert("Failed to add the member");
-                      }
-                      await refresh();
-                    }}
-                  >
-                    <input
-                      name="signingPublicKey"
-                      type="text"
-                      placeholder="Signing Public Key"
-                    />
-                    <input
-                      name="lockboxPublicKey"
-                      type="text"
-                      placeholder="Lockbox Public Key"
-                    />
-                    <input name="name" type="text" placeholder="Username" />
-                    <label>
-                      canAddMembers
-                      <input name="canAddMembers" type="checkbox" />
-                    </label>
-                    <label>
-                      canRemoveMembers
-                      <input name="canRemoveMembers" type="checkbox" />
-                    </label>
-                    <button>Add Member</button>
-                    <span>
-                      Hint: can{"'"}t add as admin, but can be promoted once
-                      added (UI limitation only)
-                    </span>
-                  </form>
-                </div>
-              );
-            })}
-            <h2>Create Organization</h2>
-            <form
-              onSubmit={async (formEvent) => {
-                formEvent.preventDefault();
-                const username = formEvent.target[0].value;
-                if (username === "") {
-                  alert("Username required");
-                  return;
-                }
-
-                const event = createChain(currentUser.sign, {
-                  [currentUser.sign.publicKey]: currentUser.lockbox.publicKey,
-                });
-
-                const state = resolveState([event]);
-                const key = createKey();
-                const lockboxes = createLockboxes(
-                  key,
-                  currentUser.lockbox.privateKey,
-                  currentUser.lockbox.publicKey,
-                  state
+                        const result = await addMemberToOrganizationMutation({
+                          input: {
+                            organizationId: org.id,
+                            event: JSON.stringify(event),
+                            keyId: org.lastKey.keyId,
+                            lockbox: JSON.stringify(lockbox),
+                            encryptedState: JSON.stringify(encryptedState),
+                          },
+                        });
+                        if (result.data.addMemberToOrganization === null) {
+                          alert("Failed to add the member");
+                        }
+                        await refresh();
+                      }}
+                    >
+                      <input
+                        name="signingPublicKey"
+                        type="text"
+                        placeholder="Signing Public Key"
+                      />
+                      <input
+                        name="lockboxPublicKey"
+                        type="text"
+                        placeholder="Lockbox Public Key"
+                      />
+                      <input name="name" type="text" placeholder="Username" />
+                      <label>
+                        canAddMembers
+                        <input name="canAddMembers" type="checkbox" />
+                      </label>
+                      <label>
+                        canRemoveMembers
+                        <input name="canRemoveMembers" type="checkbox" />
+                      </label>
+                      <button>Add Member</button>
+                      <span>
+                        Hint: can{"'"}t add as admin, but can be promoted once
+                        added (UI limitation only)
+                      </span>
+                    </form>
+                  </div>
                 );
-                const encryptedState = encryptState(
-                  state,
-                  {
-                    members: {
-                      [currentUser.sign.publicKey]: { name: username },
+              })}
+              <h2>Create Organization</h2>
+              <form
+                onSubmit={async (formEvent) => {
+                  formEvent.preventDefault();
+                  const username = formEvent.target[0].value;
+                  if (username === "") {
+                    alert("Username required");
+                    return;
+                  }
+
+                  const event = createChain(currentUser.sign, {
+                    [currentUser.sign.publicKey]: currentUser.lockbox.publicKey,
+                  });
+
+                  const state = resolveState([event]);
+                  const key = createKey();
+                  const lockboxes = createLockboxes(
+                    key,
+                    currentUser.lockbox.privateKey,
+                    currentUser.lockbox.publicKey,
+                    state
+                  );
+                  const encryptedState = encryptState(
+                    state,
+                    {
+                      members: {
+                        [currentUser.sign.publicKey]: { name: username },
+                      },
                     },
-                  },
-                  key,
-                  convertToSigningKeyPair(currentUser.sign)
-                );
+                    key,
+                    convertToSigningKeyPair(currentUser.sign)
+                  );
 
-                const result = await createOrganizationMutation({
-                  input: {
-                    event: JSON.stringify(event),
-                    keyId: key.keyId,
-                    lockboxes: JSON.stringify(lockboxes.lockboxes),
-                    encryptedState: JSON.stringify(encryptedState),
-                  },
-                });
-                if (result.data.createOrganization === null) {
-                  alert("Failed to create the organization");
-                }
-                await refresh();
-              }}
-            >
-              <input
-                name="name"
-                type="text"
-                placeholder="Your Username in the organization"
-              />
-              <button>Create Organization (Chain)</button>
-            </form>
-          </div>
+                  const result = await createOrganizationMutation({
+                    input: {
+                      event: JSON.stringify(event),
+                      keyId: key.keyId,
+                      lockboxes: JSON.stringify(lockboxes.lockboxes),
+                      encryptedState: JSON.stringify(encryptedState),
+                    },
+                  });
+                  if (result.data.createOrganization === null) {
+                    alert("Failed to create the organization");
+                  }
+                  await refresh();
+                }}
+              >
+                <input
+                  name="name"
+                  type="text"
+                  placeholder="Your Username in the organization"
+                />
+                <button>Create Organization (Chain)</button>
+              </form>
+            </div>
+          )}
         </div>
       ) : (
         <button

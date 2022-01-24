@@ -1,5 +1,6 @@
 import { queryType, objectType, arg } from "nexus";
 import { getOrganizations } from "../database/getOrganizations";
+import { getUserFromSession } from "../database/getUserFromSession";
 
 const Event = objectType({
   name: "Event",
@@ -57,15 +58,30 @@ const Organization = objectType({
   },
 });
 
+const User = objectType({
+  name: "User",
+  definition(t) {
+    t.string("signingPublicKey");
+  },
+});
+
 export const Query = queryType({
   definition(t) {
     t.list.field("organizations", {
       type: Organization,
-      args: {
-        signingPublicKey: arg({ type: "String" }),
-      },
       async resolve(root, args, ctx) {
-        return await getOrganizations(args.signingPublicKey, ctx.session);
+        return await getOrganizations(ctx.session);
+      },
+    });
+
+    t.field("me", {
+      type: User,
+      async resolve(root, args, ctx) {
+        const user = await getUserFromSession(ctx.session);
+        if (!user) return null;
+        return {
+          signingPublicKey: user.publicSigningKey,
+        };
       },
     });
   },

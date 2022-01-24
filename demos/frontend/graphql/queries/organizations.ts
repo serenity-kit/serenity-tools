@@ -1,6 +1,6 @@
 export const organizationsQueryString = `
-  query ($signingPublicKey: String!) {
-    organizations (signingPublicKey: $signingPublicKey) {
+  query {
+    organizations {
       id
       events {
         content

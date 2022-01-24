@@ -2,16 +2,15 @@ import { canonicalize } from "@serenity-tools/trust-chain";
 import { getUserFromSession } from "./getUserFromSession";
 import { prisma } from "./prisma";
 
-export async function getOrganizations(signingPublicKey: string, session: any) {
+export async function getOrganizations(session: any) {
   const currentUser = await getUserFromSession(session);
-  if (signingPublicKey !== currentUser.publicSigningKey) {
-    throw new Error("Failed");
-  }
 
   try {
     const organizations = await prisma.organization.findMany({
       where: {
-        members: { some: { publicSigningKey: { equals: signingPublicKey } } },
+        members: {
+          some: { publicSigningKey: { equals: currentUser.publicSigningKey } },
+        },
       },
       include: {
         events: { select: { content: true }, orderBy: { id: "asc" } },
@@ -24,7 +23,9 @@ export async function getOrganizations(signingPublicKey: string, session: any) {
             key: {
               include: {
                 lockbox: {
-                  where: { receiverSigningPublicKey: signingPublicKey },
+                  where: {
+                    receiverSigningPublicKey: currentUser.publicSigningKey,
+                  },
                 },
               },
             },
