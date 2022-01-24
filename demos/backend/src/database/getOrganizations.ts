@@ -21,8 +21,12 @@ export async function getOrganizations(signingPublicKey: string, session: any) {
         },
         encryptedStates: {
           include: {
-            lockboxes: {
-              where: { receiverSigningPublicKey: signingPublicKey },
+            key: {
+              include: {
+                lockbox: {
+                  where: { receiverSigningPublicKey: signingPublicKey },
+                },
+              },
             },
           },
         },
@@ -54,13 +58,13 @@ export async function getOrganizations(signingPublicKey: string, session: any) {
               signature: encryptedState.authorSignature,
             },
             lockbox: {
-              keyId: encryptedState.lockboxes[0].keyId,
-              ciphertext: encryptedState.lockboxes[0].ciphertext,
+              keyId: encryptedState.key.lockbox[0].keyId,
+              ciphertext: encryptedState.key.lockbox[0].ciphertext,
               receiverSigningPublicKey:
-                encryptedState.lockboxes[0].receiverSigningPublicKey,
+                encryptedState.key.lockbox[0].receiverSigningPublicKey,
               senderLockboxPublicKey:
-                encryptedState.lockboxes[0].senderLockboxPublicKey,
-              nonce: encryptedState.lockboxes[0].nonce,
+                encryptedState.key.lockbox[0].senderLockboxPublicKey,
+              nonce: encryptedState.key.lockbox[0].nonce,
             },
           };
         }),

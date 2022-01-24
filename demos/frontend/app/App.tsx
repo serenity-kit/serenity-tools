@@ -160,23 +160,28 @@ export default function App() {
     signingPublicKey,
     authorization: MemberAuthorization
   ) => {
-    const event = updateMember(
-      state.lastEventHash,
-      convertToSigningKeyPair(currentUser.sign),
-      signingPublicKey,
-      authorization
-    );
-    applyEvent(state, event);
-    const result = await updateOrganizationMemberMutation({
-      input: {
-        organizationId: state.id,
-        event: JSON.stringify(event),
-      },
-    });
-    if (result.data.updateOrganizationMember === null) {
+    try {
+      const event = updateMember(
+        state.lastEventHash,
+        convertToSigningKeyPair(currentUser.sign),
+        signingPublicKey,
+        authorization
+      );
+      applyEvent(state, event);
+      const result = await updateOrganizationMemberMutation({
+        input: {
+          organizationId: state.id,
+          event: JSON.stringify(event),
+        },
+      });
+      if (result.data.updateOrganizationMember === null) {
+        alert("Failed to update the member");
+      }
+      await refresh();
+    } catch (err) {
+      console.error(err);
       alert("Failed to update the member");
     }
-    await refresh();
   };
 
   const proposeMemberUpdate = async (
@@ -211,6 +216,7 @@ export default function App() {
           <pre>{JSON.stringify(currentUser, undefined, 2)}</pre>
           <button
             onClick={() => {
+              setHasActiveSession(false);
               setCurrentUser(null);
               // TODO handle this on the remote
             }}
@@ -218,7 +224,7 @@ export default function App() {
             Delete current user from local storage
           </button>
           <button
-            disabled={hasActiveSession}
+            // disabled={hasActiveSession}
             onClick={async () => {
               const result = await requestAuthenticationChallengeMutation({
                 input: { signingPublicKey: currentUser.sign.publicKey },
@@ -273,6 +279,7 @@ export default function App() {
           >
             Logout (not implemented yet)
           </button>
+          <div>Logged in: {hasActiveSession ? "true" : "false"}</div>
           <div>
             <h2>Organizations</h2>
             {organizations.map((org) => {
@@ -353,15 +360,18 @@ export default function App() {
                               } else if (
                                 event.transaction.type === "remove-member"
                               ) {
-                                applyEvent(org, event);
-                                await removeMemberFromOrganizationMutation({
-                                  input: {
-                                    organizationId: org.id,
-                                    event: JSON.stringify(event),
-                                    eventProposalId: eventProposal.id,
-                                  },
-                                });
-                                await refresh();
+                                alert(
+                                  "Removing an admin is currently not implemented."
+                                );
+                                // applyEvent(org, event);
+                                // await removeMemberFromOrganizationMutation({
+                                //   input: {
+                                //     organizationId: org.id,
+                                //     event: JSON.stringify(event),
+                                //     eventProposalId: eventProposal.id,
+                                //   },
+                                // });
+                                // await refresh();
                               }
                             }}
                           >
@@ -605,12 +615,13 @@ export default function App() {
                         newMemberSigningPublicKey,
                         newMemberLockboxPublicKey
                       );
+
                       const encryptedState = encryptState(
                         org,
                         {
-                          ...org.currentUserEncryptedState,
+                          ...(org.currentUserEncryptedState || {}),
                           members: {
-                            ...org.currentUserEncryptedState.members,
+                            ...(org.currentUserEncryptedState?.members || {}),
                             [newMemberSigningPublicKey]: { name: username },
                           },
                         },
