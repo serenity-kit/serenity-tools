@@ -41,7 +41,6 @@ export const applyEvent = (
   const hasDuplicatedAuthors = publicKeys.some((publicKey, index) => {
     return publicKeys.indexOf(publicKey) != index;
   });
-  // TODO add tests for this case
   if (hasDuplicatedAuthors) {
     throw new InvalidTrustChainError("An author can sign the event only once.");
   }

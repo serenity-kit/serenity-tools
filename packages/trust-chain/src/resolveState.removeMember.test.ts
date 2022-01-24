@@ -205,7 +205,7 @@ test("should be able to remove an admin as admin", async () => {
   );
   const addAdminEvent2 = addMember(
     hashTransaction(addAdminEvent.transaction),
-    keyPairB,
+    keyPairA,
     keyPairsC.sign.publicKey,
     keyPairsC.box.publicKey,
     { isAdmin: true, canAddMembers: true, canRemoveMembers: true }
@@ -258,7 +258,7 @@ test("should not be able to remove an admin if no more than 50% of admins signed
   );
   const addAdminEvent2 = addMember(
     hashTransaction(addAdminEvent.transaction),
-    keyPairB,
+    keyPairA,
     keyPairsC.sign.publicKey,
     keyPairsC.box.publicKey,
     { isAdmin: true, canAddMembers: true, canRemoveMembers: true }

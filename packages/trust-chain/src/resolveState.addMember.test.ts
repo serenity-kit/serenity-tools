@@ -165,7 +165,7 @@ test("should be able to add an admin as admins", async () => {
   );
   const addAdminEvent2 = addMember(
     hashTransaction(addAdminEvent.transaction),
-    keyPairB,
+    keyPairA,
     keyPairsC.sign.publicKey,
     keyPairsC.box.publicKey,
     { isAdmin: true, canAddMembers: true, canRemoveMembers: true }
@@ -194,7 +194,7 @@ test("should be able to add an admin as admins", async () => {
       },
       "ZKcwjAMAaSiq7k3MQVQUZ6aa7kBreK__5hkGI4SCltk": Object {
         "addedBy": Array [
-          "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY",
+          "74IPzs2dhoERLRuxeS7zadzEvKfb7IqOK-jKu0mQxIM",
           "MTDhqVIMflTD0Car-KSP1MWCIEYqs2LBaXfU20di0tY",
         ],
         "canAddMembers": true,
@@ -227,4 +227,30 @@ test("should not be able to add an admin if no more than 50% of admins signed th
   const chain = [createEvent, addAdminEvent, addAdminEvent2];
   expect(() => resolveState(chain)).toThrow(InvalidTrustChainError);
   expect(() => resolveState(chain)).toThrow("Not allowed to add an admin.");
+});
+
+test("should not be able to add the same admin twice as author", async () => {
+  const createEvent = createChain(keyPairsA.sign, {
+    [keyPairsA.sign.publicKey]: keyPairsA.box.publicKey,
+  });
+  const addAdminEvent = addMember(
+    hashTransaction(createEvent.transaction),
+    keyPairA,
+    keyPairsB.sign.publicKey,
+    keyPairsB.box.publicKey,
+    { isAdmin: true, canAddMembers: true, canRemoveMembers: true }
+  );
+  const addAdminEvent2 = addMember(
+    hashTransaction(addAdminEvent.transaction),
+    keyPairA,
+    keyPairsC.sign.publicKey,
+    keyPairsC.box.publicKey,
+    { isAdmin: true, canAddMembers: true, canRemoveMembers: true }
+  );
+  const addAdminEvent3 = addAuthorToEvent(addAdminEvent2, keyPairA);
+  const chain = [createEvent, addAdminEvent, addAdminEvent3];
+  expect(() => resolveState(chain)).toThrow(InvalidTrustChainError);
+  expect(() => resolveState(chain)).toThrow(
+    "An author can sign the event only once."
+  );
 });
