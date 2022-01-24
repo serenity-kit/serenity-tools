@@ -104,22 +104,82 @@ Note: The whole project is prototype style code e.g. some functions of the trust
 ### Trust Chain Events
 
 - `create-chain`
+
+  - Usually created by one author, but can be more as well.
+
 - `add-member`
 
-  - admin: with all permissions
-  - member: needs canAddMember, can set no permissions
+  - Members can only add another member if they have the permission `canAddMember`. A member can not add another member as admin.
+  - Admins can add members and set the permissions `canAddMember` and `canRemoveMember`. If an admin wants to add another member the event must be signed by >50% of the admins.
 
 - `remove-member`
 
-  - admin: needs more than 50% admin votes
-  - member: need can remove member
+  - Members can only remove another member if they have the permission `canAddMember`. A member can not remove another member as admin.
+  - Admins can add members and set the permissions `canAddMember` and `canRemoveMember`. If an admin wants to add another member the event must be signed by >50% of the admins.
 
 - `update-member`
 
-  - needs >50% admins if a member is promoted or demoted as admin
-  - needs one admin to update
+  - Only admins can update the authorization info `isAdmin`, `canAddMember` and `canRemoveMember` of other members. If an admin promote a member to an admin or demote an admin to a member the event must be signed by >50% of the admins.
 
-- `end-chain` TODO
+- `end-chain` TODO (not implemented yet)
+
+  - The purpose is to close the chain so no one else can attach more events to it. The event must be signed by >50% of the admins.
+
+#### Structure
+
+Example structure of an event:
+
+```json
+{
+  // the purpose of authors being an array is so that multiple users can sign an event and declare themselves as authors
+  "authors": [
+    {
+      // public signing key of creator of the event or others that signed it
+      "publicKey": "pkcVysaH_mC-TpXzZEAAeB47rIqsWwubaM4stZQu-B4",
+      // signature of the hash of the prev transaction + the hash of the current transaction
+      "signature": "q5BHaR8Wu1CCA6mt-XCwmxuYpVU1-6J5E_FmxgWu_C63yfCJ9IwFh9bBMX3WPAdMN_yMFMAK3Ygapjd96qKHCg"
+    }
+  ],
+  // hash of the prev transaction
+  "prevHash": "M-LtpoR7cMzADedkf0TXAPVIXQR5kj7T-gCtcgNaFwu1IShI84B5PaXULQjQHMVANiMTyRyCcsne389jHIRvng",
+  // transaction is the actual event content
+  "transaction": {
+    "type": "update-member",
+    "isAdmin": true,
+    "canAddMembers": true,
+    "canRemoveMembers": true,
+    "memberSigningPublicKey": "EfOSyGYcwLdVjRSJDimpEFB2_XuXd2oCCh7f8I4VlwY"
+  }
+}
+```
+
+### EncryptedState Structure
+
+Example structure of the encrypted state:
+
+```json
+[
+  {
+    // identified for symmetric key that's used
+    "keyId": "43b89b1c-6c7b-48a6-839c-20cc495d3f97",
+    "ciphertext": "yYV1_uUtoFPRBRBCUtyv-jwPLfQI2UFYMovnUUFJh5UXALMkq69KM73YI3WaqZGrcclwTE7jMYAsYKR5rU0d-Q7yprXOS_1hXZ8TeKyQ-vSxpgZmgJVUK5zP_HDyFB4ackgBRdws6IyOMxc1Kz_HB-SCqC8Vk26H7YhGaIQWs4MXNpqgTg17cIo7Q2TL2shYN_VHSHmAeojByOfyDpUP3kpXK3zduIZZEKG3tuwjnzN0JG83BCPel8Iyrh91_UnBpctnXQUEhkoQ_ZJ_6YXpGYTnhTFur40NhX5nDjpIImbCiMoVAVIU_KZEcQ4bzGZ1_eM8AeRKTiie",
+    "nonce": "YOnlwPnEtwnfEQa0nEQR41RvQ7Dxt2NB",
+    // global logical clock to order the encrypted states (to ensure deterministic data resolving)
+    "publicData": "{\"clock\":2}",
+    "author": {
+      "publicKey": "pkcVysaH_mC-TpXzZEAAeB47rIqsWwubaM4stZQu-B4",
+      "signature": "XTNuX2mqcpRF4nLnhHURAYblpE68ftPsaNW3ZsdZY1Se7BlLTjJSnADrV9Rn4AhM4MIjAsU8mj003vQCJUtjAA"
+    },
+    "lockbox": {
+      "keyId": "43b89b1c-6c7b-48a6-839c-20cc495d3f97",
+      "receiverSigningPublicKey": "pkcVysaH_mC-TpXzZEAAeB47rIqsWwubaM4stZQu-B4",
+      "senderLockboxPublicKey": "7CVtpWbqKFJvZO7hso3dOmrrwva_3uDgm3erquuTFRQ",
+      "ciphertext": "f3_AVc5xIxC8ejhBflv_qhAjtZoTveMroA9H4uATn51yKKpToegWn_dB-P-oYG8IK_CKDt4mfmGD-43M5KVSeAykPDiPIxAIBAgNZfjVJMwhiYUFMt4U26WTlHX4aBFa75-VztyF2TcYmkhEbFw-Gf0fVVs",
+      "nonce": "HLDYyAc4GMEcCqHSE2a_N-l1oaRkWfCL"
+    }
+  }
+]
+```
 
 ### Utility functions
 
